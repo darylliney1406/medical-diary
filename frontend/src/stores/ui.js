@@ -25,7 +25,7 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   function dismissToast(id) {
-    toasts.value = toasts.value.filter(t => t.id \!== id)
+    toasts.value = toasts.value.filter(t => t.id !== id)
   }
 
   function setPwaPrompt(event) {
@@ -33,7 +33,7 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   async function installPwa() {
-    if (\!pwaPrompt.value) return
+    if (!pwaPrompt.value) return
     pwaPrompt.value.prompt()
     await pwaPrompt.value.userChoice
     pwaPrompt.value = null
