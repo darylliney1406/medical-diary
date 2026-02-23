@@ -9,17 +9,18 @@ async function bootstrap() {
   const pinia = createPinia()
 
   app.use(pinia)
-  app.use(router)
 
-  // Silently restore session from HTTP-only refresh cookie before mounting
+  // Restore session BEFORE installing router so the navigation guard
+  // sees the correct auth state on the very first route resolution.
   const { useAuthStore } = await import('./stores/auth')
   const authStore = useAuthStore()
   try {
     await authStore.refreshToken()
   } catch {
-    // No valid session - user will be redirected to login by router guard
+    // No valid session - router guard will redirect to /login
   }
 
+  app.use(router)
   app.mount('#app')
 }
 

@@ -3,6 +3,7 @@ from io import BytesIO
 from weasyprint import HTML
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from ..models.entries import BPEntry, SymptomEntry, FoodEntry, GymEntry, AISummary, SummaryType
 from ..models.user import User
 from ..models.profile import UserIdentityProfile
@@ -119,45 +120,50 @@ async def generate_pdf(
     identity = identity_result.scalar_one_or_none()
 
     bp_result = await session.execute(
-        select(BPEntry).where(
+        select(BPEntry).options(
+            selectinload(BPEntry.readings),
+            selectinload(BPEntry.tags),
+        ).where(
             BPEntry.user_id == user.id,
             BPEntry.entry_date >= start_date,
             BPEntry.entry_date <= end_date,
-        )
+        ).order_by(BPEntry.entry_date)
     )
     bp_entries = bp_result.scalars().all()
-    # Eager-load readings
-    for entry in bp_entries:
-        _ = entry.readings
 
     sym_result = await session.execute(
-        select(SymptomEntry).where(
+        select(SymptomEntry).options(
+            selectinload(SymptomEntry.tags),
+        ).where(
             SymptomEntry.user_id == user.id,
             SymptomEntry.entry_date >= start_date,
             SymptomEntry.entry_date <= end_date,
-        )
+        ).order_by(SymptomEntry.entry_date)
     )
     symptoms = sym_result.scalars().all()
 
     food_result = await session.execute(
-        select(FoodEntry).where(
+        select(FoodEntry).options(
+            selectinload(FoodEntry.tags),
+        ).where(
             FoodEntry.user_id == user.id,
             FoodEntry.entry_date >= start_date,
             FoodEntry.entry_date <= end_date,
-        )
+        ).order_by(FoodEntry.entry_date)
     )
     foods = food_result.scalars().all()
 
     gym_result = await session.execute(
-        select(GymEntry).where(
+        select(GymEntry).options(
+            selectinload(GymEntry.exercises),
+            selectinload(GymEntry.tags),
+        ).where(
             GymEntry.user_id == user.id,
             GymEntry.entry_date >= start_date,
             GymEntry.entry_date <= end_date,
-        )
+        ).order_by(GymEntry.entry_date)
     )
     gyms = gym_result.scalars().all()
-    for g in gyms:
-        _ = g.exercises
 
     summary_content = None
     if include_summary:
