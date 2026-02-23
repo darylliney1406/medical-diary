@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     ALGORITHM: str = "HS256"
 
+    # Initial admin seed (optional — only used on first startup when no users exist)
+    ADMIN_EMAIL: str | None = None
+    ADMIN_PASSWORD: str | None = None
+    ADMIN_NAME: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:
