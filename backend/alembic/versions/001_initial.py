@@ -17,12 +17,37 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Enums
-    op.execute("CREATE TYPE userrole AS ENUM ('admin', 'user')")
-    op.execute("CREATE TYPE activitylevel AS ENUM ('low', 'moderate', 'high', 'very_high')")
-    op.execute("CREATE TYPE mealtype AS ENUM ('breakfast', 'lunch', 'dinner', 'snack', 'drink')")
-    op.execute("CREATE TYPE cataloguecategory AS ENUM ('food', 'drink')")
-    op.execute("CREATE TYPE summarytype AS ENUM ('daily', 'weekly')")
+    # Enums — DO/EXCEPTION makes each CREATE TYPE idempotent
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE userrole AS ENUM ('admin', 'user');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE activitylevel AS ENUM ('low', 'moderate', 'high', 'very_high');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE mealtype AS ENUM ('breakfast', 'lunch', 'dinner', 'snack', 'drink');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE cataloguecategory AS ENUM ('food', 'drink');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE summarytype AS ENUM ('daily', 'weekly');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
 
     op.create_table(
         "users",
