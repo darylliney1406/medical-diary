@@ -44,10 +44,10 @@
           <span>Severe</span>
         </div>
       </div>
-      <div class="flex justify-between text-lg mt-1">
-        <span title="Mild">😊</span>
-        <span title="Moderate">😐</span>
-        <span title="Severe">😣</span>
+      <div class="flex justify-between mt-1">
+        <Smile class="w-5 h-5 text-green-500" title="Mild" />
+        <Meh class="w-5 h-5 text-yellow-500" title="Moderate" />
+        <Frown class="w-5 h-5 text-red-500" title="Severe" />
       </div>
     </div>
 
@@ -68,6 +68,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { format } from 'date-fns'
+import { Smile, Meh, Frown } from 'lucide-vue-next'
 import TagSelector from './TagSelector.vue'
 
 const today = format(new Date(), 'yyyy-MM-dd')

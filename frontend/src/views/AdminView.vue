@@ -19,6 +19,7 @@
               <option value="admin">Admin</option>
             </select>
           </div>
+          <div><label class="label">Password</label><input v-model="newUser.password" type="password" class="input-field" required autocomplete="new-password" /></div>
           <div v-if="createError" class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{{ createError }}</div>
           <div class="flex gap-3 pt-2">
             <button type="button" @click="showCreateForm = false" class="btn-secondary flex-1">Cancel</button>
@@ -109,7 +110,7 @@ const creating = ref(false)
 const createError = ref('')
 const createdReset = ref(null)
 const resetToken = ref(null)
-const newUser = ref({ name: '', email: '', role: 'user' })
+const newUser = ref({ name: '', email: '', role: 'user', password: '' })
 
 onMounted(fetchUsers)
 
@@ -130,7 +131,7 @@ async function createUser() {
     users.value.push(data.user || data)
     if (data.reset_token) createdReset.value = data.reset_token
     toast('User created successfully')
-    newUser.value = { name: '', email: '', role: 'user' }
+    newUser.value = { name: '', email: '', role: 'user', password: '' }
   } catch (e) {
     createError.value = e.response?.data?.detail || 'Failed to create user'
   } finally { creating.value = false }

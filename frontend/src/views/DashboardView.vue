@@ -23,7 +23,7 @@
       <div class="grid grid-cols-4 gap-2">
         <button v-for="q in quickAdd" :key="q.type" @click="router.push('/new-entry?type=' + q.type)"
           class="flex flex-col items-center gap-1.5 py-3 rounded-xl border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all">
-          <span class="text-2xl">{{ q.icon }}</span>
+          <component :is="q.icon" class="w-6 h-6" />
           <span class="text-xs font-medium text-gray-600">{{ q.label }}</span>
         </button>
       </div>
@@ -66,7 +66,7 @@
 import { ref, computed, onMounted } from "vue"
 import { useRouter, RouterLink } from "vue-router"
 import { format } from "date-fns"
-import { Activity, Sparkles, Loader2, BookOpen } from "lucide-vue-next"
+import { Activity, Sparkles, Loader2, BookOpen, Heart, Thermometer, Utensils, Dumbbell } from "lucide-vue-next"
 import { useAuthStore } from "@/stores/auth"
 import { useEntriesStore } from "@/stores/entries"
 import { useToast } from "@/composables/useToast"
@@ -85,10 +85,10 @@ const summaryLoading = ref(false)
 const todayDate = format(new Date(), "yyyy-MM-dd")
 
 const quickAdd = [
-  { type: "bp", label: "BP", icon: "❤️" },
-  { type: "symptom", label: "Symptom", icon: "🤒" },
-  { type: "food", label: "Food", icon: "🍽️" },
-  { type: "gym", label: "Gym", icon: "💪" },
+  { type: "bp", label: "BP", icon: Heart },
+  { type: "symptom", label: "Symptom", icon: Thermometer },
+  { type: "food", label: "Food", icon: Utensils },
+  { type: "gym", label: "Gym", icon: Dumbbell },
 ]
 
 const greeting = computed(() => {

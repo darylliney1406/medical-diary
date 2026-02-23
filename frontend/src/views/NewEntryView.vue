@@ -19,7 +19,7 @@
           ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
           : 'border-gray-200 text-gray-500 hover:border-gray-300'"
       >
-        <span class="text-2xl">{{ t.icon }}</span>
+        <component :is="t.icon" class="w-6 h-6" />
         {{ t.label }}
       </button>
     </div>
@@ -59,7 +59,7 @@
 <script setup>
 import { ref, computed, shallowRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ChevronLeft, Loader2 } from 'lucide-vue-next'
+import { ChevronLeft, Loader2, Heart, Thermometer, Utensils, Dumbbell } from 'lucide-vue-next'
 import { useEntriesStore } from '@/stores/entries'
 import { useToast } from '@/composables/useToast'
 import BPForm from '@/components/BPForm.vue'
@@ -73,10 +73,10 @@ const entries = useEntriesStore()
 const { toast } = useToast()
 
 const types = [
-  { value: 'bp', label: 'BP', icon: '❤️' },
-  { value: 'symptom', label: 'Symptom', icon: '🤒' },
-  { value: 'food', label: 'Food', icon: '🍽️' },
-  { value: 'gym', label: 'Gym', icon: '💪' },
+  { value: 'bp', label: 'BP', icon: Heart },
+  { value: 'symptom', label: 'Symptom', icon: Thermometer },
+  { value: 'food', label: 'Food', icon: Utensils },
+  { value: 'gym', label: 'Gym', icon: Dumbbell },
 ]
 
 const activeType = ref(route.query.type || 'bp')

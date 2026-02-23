@@ -24,7 +24,7 @@
           class="flex flex-col items-center gap-1 py-2 px-1 rounded-lg border text-xs font-medium transition-colors"
           :class="form.meal_type === m.value ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'"
         >
-          <span class="text-xl">{{ m.icon }}</span>
+          <component :is="m.icon" class="w-5 h-5" />
           {{ m.label }}
         </button>
       </div>
@@ -89,6 +89,7 @@
 <script setup>
 import { ref } from 'vue'
 import { format } from 'date-fns'
+import { Sunrise, Sun, Moon, Apple, Droplets } from 'lucide-vue-next'
 import { catalogueApi } from '@/api'
 import TagSelector from './TagSelector.vue'
 
@@ -96,11 +97,11 @@ const today = format(new Date(), 'yyyy-MM-dd')
 const now = format(new Date(), 'HH:mm')
 
 const mealTypes = [
-  { value: 'breakfast', label: 'Breakfast', icon: '🌅' },
-  { value: 'lunch', label: 'Lunch', icon: '☀️' },
-  { value: 'dinner', label: 'Dinner', icon: '🌙' },
-  { value: 'snack', label: 'Snack', icon: '🍎' },
-  { value: 'drink', label: 'Drink', icon: '💧' },
+  { value: 'breakfast', label: 'Breakfast', icon: Sunrise },
+  { value: 'lunch', label: 'Lunch', icon: Sun },
+  { value: 'dinner', label: 'Dinner', icon: Moon },
+  { value: 'snack', label: 'Snack', icon: Apple },
+  { value: 'drink', label: 'Drink', icon: Droplets },
 ]
 
 const form = ref({
