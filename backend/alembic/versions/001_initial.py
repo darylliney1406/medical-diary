@@ -8,6 +8,7 @@ Create Date: 2026-01-01 00:00:00.000000
 from typing import Sequence, Union
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision: str = "001"
@@ -17,37 +18,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Enums — DO/EXCEPTION makes each CREATE TYPE idempotent
-    op.execute("""
-        DO $$ BEGIN
-            CREATE TYPE userrole AS ENUM ('admin', 'user');
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
-    """)
-    op.execute("""
-        DO $$ BEGIN
-            CREATE TYPE activitylevel AS ENUM ('low', 'moderate', 'high', 'very_high');
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
-    """)
-    op.execute("""
-        DO $$ BEGIN
-            CREATE TYPE mealtype AS ENUM ('breakfast', 'lunch', 'dinner', 'snack', 'drink');
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
-    """)
-    op.execute("""
-        DO $$ BEGIN
-            CREATE TYPE cataloguecategory AS ENUM ('food', 'drink');
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
-    """)
-    op.execute("""
-        DO $$ BEGIN
-            CREATE TYPE summarytype AS ENUM ('daily', 'weekly');
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
-    """)
+    bind = op.get_bind()
+
+    # Enums — checkfirst=True makes each CREATE TYPE idempotent
+    postgresql.ENUM("admin", "user", name="userrole").create(bind, checkfirst=True)
+    postgresql.ENUM("low", "moderate", "high", "very_high", name="activitylevel").create(bind, checkfirst=True)
+    postgresql.ENUM("breakfast", "lunch", "dinner", "snack", "drink", name="mealtype").create(bind, checkfirst=True)
+    postgresql.ENUM("food", "drink", name="cataloguecategory").create(bind, checkfirst=True)
+    postgresql.ENUM("daily", "weekly", name="summarytype").create(bind, checkfirst=True)
 
     op.create_table(
         "users",
@@ -55,7 +33,7 @@ def upgrade() -> None:
         sa.Column("email", sa.String(255), nullable=False, unique=True, index=True),
         sa.Column("hashed_password", sa.String(255), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
-        sa.Column("role", sa.Enum("admin", "user", name="userrole", create_type=False), nullable=False, server_default="user"),
+        sa.Column("role", postgresql.ENUM("admin", "user", name="userrole", create_type=False), nullable=False, server_default="user"),
         sa.Column("is_active", sa.Boolean, nullable=False, server_default="true"),
         sa.Column("mfa_enabled", sa.Boolean, nullable=False, server_default="false"),
         sa.Column("mfa_secret", sa.String(255), nullable=True),
@@ -88,7 +66,7 @@ def upgrade() -> None:
         sa.Column("fat_percentage", sa.Float, nullable=True),
         sa.Column("water_percentage", sa.Float, nullable=True),
         sa.Column("muscle_mass_percentage", sa.Float, nullable=True),
-        sa.Column("activity_level", sa.Enum("low", "moderate", "high", "very_high", name="activitylevel", create_type=False), nullable=True),
+        sa.Column("activity_level", postgresql.ENUM("low", "moderate", "high", "very_high", name="activitylevel", create_type=False), nullable=True),
         sa.Column("recorded_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
 
@@ -131,7 +109,7 @@ def upgrade() -> None:
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
         sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
         sa.Column("name", sa.String(255), nullable=False),
-        sa.Column("category", sa.Enum("food", "drink", name="cataloguecategory", create_type=False), nullable=False),
+        sa.Column("category", postgresql.ENUM("food", "drink", name="cataloguecategory", create_type=False), nullable=False),
         sa.Column("typical_portion", sa.String(255), nullable=True),
         sa.Column("notes", sa.Text, nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
@@ -189,7 +167,7 @@ def upgrade() -> None:
         sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
         sa.Column("entry_date", sa.Date, nullable=False, index=True),
         sa.Column("entry_time", sa.Time, nullable=False),
-        sa.Column("meal_type", sa.Enum("breakfast", "lunch", "dinner", "snack", "drink", name="mealtype", create_type=False), nullable=False),
+        sa.Column("meal_type", postgresql.ENUM("breakfast", "lunch", "dinner", "snack", "drink", name="mealtype", create_type=False), nullable=False),
         sa.Column("description", sa.Text, nullable=False),
         sa.Column("quantity", sa.String(255), nullable=True),
         sa.Column("catalogue_item_id", UUID(as_uuid=True), sa.ForeignKey("food_catalogue_items.id", ondelete="SET NULL"), nullable=True),
@@ -236,7 +214,7 @@ def upgrade() -> None:
         "ai_summaries",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
         sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("summary_type", sa.Enum("daily", "weekly", name="summarytype", create_type=False), nullable=False),
+        sa.Column("summary_type", postgresql.ENUM("daily", "weekly", name="summarytype", create_type=False), nullable=False),
         sa.Column("period_start", sa.Date, nullable=False),
         sa.Column("period_end", sa.Date, nullable=False),
         sa.Column("content", sa.Text, nullable=False),
@@ -245,6 +223,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
     op.drop_table("ai_summaries")
     op.drop_table("gym_entry_tags")
     op.drop_table("gym_exercises")
@@ -263,8 +242,8 @@ def downgrade() -> None:
     op.drop_table("user_body_metrics")
     op.drop_table("user_identity_profiles")
     op.drop_table("users")
-    op.execute("DROP TYPE IF EXISTS summarytype")
-    op.execute("DROP TYPE IF EXISTS cataloguecategory")
-    op.execute("DROP TYPE IF EXISTS mealtype")
-    op.execute("DROP TYPE IF EXISTS activitylevel")
-    op.execute("DROP TYPE IF EXISTS userrole")
+    postgresql.ENUM(name="summarytype").drop(bind, checkfirst=True)
+    postgresql.ENUM(name="cataloguecategory").drop(bind, checkfirst=True)
+    postgresql.ENUM(name="mealtype").drop(bind, checkfirst=True)
+    postgresql.ENUM(name="activitylevel").drop(bind, checkfirst=True)
+    postgresql.ENUM(name="userrole").drop(bind, checkfirst=True)
