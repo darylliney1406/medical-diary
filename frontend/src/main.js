@@ -21,6 +21,9 @@ async function bootstrap() {
   }
 
   app.use(router)
+  // Wait for the initial navigation to settle before mounting so the
+  // RouterView always has a resolved component on first render.
+  await router.isReady()
   app.mount('#app')
 }
 

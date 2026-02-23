@@ -3,7 +3,7 @@
     <AppNav v-if="showNav" />
     <main :class="showNav ? 'pb-20 md:pl-64' : ''" class="min-h-screen">
       <RouterView v-slot="{ Component }">
-        <Transition name="fade" mode="out-in">
+        <Transition name="fade">
           <component :is="Component" :key="route.fullPath" />
         </Transition>
       </RouterView>
