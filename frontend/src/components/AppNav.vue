@@ -16,8 +16,8 @@
       <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl p-4" style="padding-bottom: calc(env(safe-area-inset-bottom) + 1rem)">
         <div class="w-10 h-1 bg-gray-300 rounded mx-auto mb-4"></div>
         <div class="grid grid-cols-3 gap-3 mb-4">
-          <NavItemLarge :item="{ to: '/profile', icon: User, label: 'Profile' }" />
-          <NavItemLarge v-if="auth.isAdmin" :item="{ to: '/admin', icon: Shield, label: 'Admin' }" />
+          <NavItemLarge :item="{ to: '/profile', icon: User, label: 'Profile' }" @click="moreOpen = false" />
+          <NavItemLarge v-if="auth.isAdmin" :item="{ to: '/admin', icon: Shield, label: 'Admin' }" @click="moreOpen = false" />
           <button @click="handleLogout" class="flex flex-col items-center gap-2 p-3 rounded-xl bg-red-50 text-red-600">
             <LogOut class="w-6 h-6" />
             <span class="text-xs font-medium">Logout</span>

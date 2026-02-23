@@ -100,13 +100,28 @@ import { format } from 'date-fns'
 import { X, ChevronUp, ChevronDown } from 'lucide-vue-next'
 import TagSelector from './TagSelector.vue'
 
+const props = defineProps({ initialData: { type: Object, default: null } })
+
 const today = format(new Date(), 'yyyy-MM-dd')
 
+function parseExercises(exercises) {
+  if (!exercises?.length) return []
+  return exercises.map(ex => ({
+    machine: ex.machine ?? '',
+    _mode: ex.duration_min != null ? 'cardio' : 'weights',
+    duration_min: ex.duration_min ?? null,
+    sets: ex.sets ?? null,
+    reps: ex.reps ?? null,
+    weight_kg: ex.weight_kg ?? null,
+  }))
+}
+
+const d = props.initialData
 const form = ref({
-  entry_date: today,
-  session_notes: '',
-  tags: [],
-  exercises: [],
+  entry_date: d?.entry_date ?? today,
+  session_notes: d?.session_notes ?? '',
+  tags: d?.tags ?? [],
+  exercises: parseExercises(d?.exercises),
 })
 
 function addExercise() {
@@ -142,7 +157,7 @@ function getFormData() {
   return {
     entry_date: form.value.entry_date,
     session_notes: form.value.session_notes,
-    tags: form.value.tags,
+    tag_ids: form.value.tags.map(t => t.id),
     exercises: form.value.exercises.map(({ _mode, ...ex }) => ex),
   }
 }

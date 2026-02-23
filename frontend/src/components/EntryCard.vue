@@ -1,7 +1,8 @@
 <template>
   <div
-    class="card"
+    class="card cursor-pointer active:bg-gray-50 transition-colors select-none"
     :class="isUrgent ? 'border-red-300 bg-red-50' : ''"
+    @click="emit('view', entry)"
   >
     <div class="flex items-start gap-3">
       <!-- Type icon -->
@@ -57,7 +58,7 @@
       </div>
 
       <!-- Actions -->
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-1" @click.stop>
         <button @click="emit('edit', entry)" class="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors">
           <Pencil class="w-4 h-4" />
         </button>
@@ -80,7 +81,7 @@ const props = defineProps({
   type: { type: String, required: true }, // 'bp' | 'symptom' | 'food' | 'gym'
 })
 
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits(['edit', 'delete', 'view'])
 
 const typeConfig = {
   bp: { label: 'Blood Pressure', icon: Activity, bg: 'bg-blue-100', color: 'text-blue-600' },

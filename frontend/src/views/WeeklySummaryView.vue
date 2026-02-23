@@ -83,7 +83,7 @@
             <span v-else>Generate</span>
           </button>
         </div>
-        <p v-if="aiSummary" class="text-sm text-gray-700 leading-relaxed">{{ aiSummary }}</p>
+        <div v-if="aiSummary" class="markdown-content" v-html="renderMarkdown(aiSummary)"></div>
         <p v-else class="text-sm text-gray-400 italic">No AI summary yet. Click Generate to create one.</p>
       </div>
 
@@ -159,6 +159,26 @@ async function generateSummary() {
     toast("Summary generated")
   } catch { toast("Failed", "error") } finally { summaryLoading.value = false }
 }
+function renderMarkdown(md) {
+  if (!md) return ''
+  let html = md
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^---+$/gm, '<hr>')
+  html = html.replace(/((?:^.*\|.*$\n?)+)/gm, (block) => {
+    const rows = block.trim().split('\n').filter(r => !/^[\s|:-]+$/.test(r))
+    if (rows.length < 1) return block
+    const toRow = (r, tag) => '<tr>' + r.split('|').slice(1,-1).map(c => `<${tag} class="px-2 py-1 border border-gray-200">${c.trim()}</${tag}>`).join('') + '</tr>'
+    const [head, ...body] = rows
+    return `<table class="w-full text-xs border-collapse my-2"><thead class="bg-gray-50">${toRow(head,'th')}</thead><tbody>${body.map(r=>toRow(r,'td')).join('')}</tbody></table>`
+  })
+  html = html.replace(/\n\n+/g, '</p><p class="mt-2">').replace(/\n/g, '<br>')
+  return `<p>${html}</p>`
+}
 async function exportPdf() {
   try {
     const s = format(currentWeekStart.value, "yyyy-MM-dd")
@@ -170,3 +190,15 @@ async function exportPdf() {
   } catch { toast("Export failed", "error") }
 }
 </script>
+
+<style scoped>
+.markdown-content :deep(h1) { @apply text-base font-bold text-gray-900 mt-3 mb-1; }
+.markdown-content :deep(h2) { @apply text-sm font-bold text-gray-800 mt-3 mb-1; }
+.markdown-content :deep(h3) { @apply text-sm font-semibold text-gray-700 mt-2 mb-0.5; }
+.markdown-content :deep(h4) { @apply text-xs font-semibold text-gray-600 mt-1; }
+.markdown-content :deep(p)  { @apply text-sm text-gray-700; }
+.markdown-content :deep(strong) { @apply font-semibold; }
+.markdown-content :deep(hr)  { @apply border-gray-200 my-2; }
+.markdown-content :deep(table) { @apply w-full text-xs border-collapse my-2 overflow-x-auto block; }
+.markdown-content :deep(th)  { @apply bg-gray-100 font-semibold text-left; }
+</style>

@@ -93,6 +93,8 @@ import { Sunrise, Sun, Moon, Apple, Droplets } from 'lucide-vue-next'
 import { catalogueApi } from '@/api'
 import TagSelector from './TagSelector.vue'
 
+const props = defineProps({ initialData: { type: Object, default: null } })
+
 const today = format(new Date(), 'yyyy-MM-dd')
 const now = format(new Date(), 'HH:mm')
 
@@ -104,18 +106,19 @@ const mealTypes = [
   { value: 'drink', label: 'Drink', icon: Droplets },
 ]
 
+const d = props.initialData
 const form = ref({
-  entry_date: today,
-  entry_time: now,
-  meal_type: 'snack',
-  description: '',
-  quantity: '',
-  catalogue_item_id: null,
-  notes: '',
-  tags: [],
+  entry_date: d?.entry_date ?? today,
+  entry_time: d?.entry_time ? String(d.entry_time).slice(0, 5) : now,
+  meal_type: d?.meal_type ?? 'snack',
+  description: d?.description ?? '',
+  quantity: d?.quantity ?? '',
+  catalogue_item_id: d?.catalogue_item_id ?? null,
+  notes: d?.notes ?? '',
+  tags: d?.tags ?? [],
 })
 
-const searchQuery = ref('')
+const searchQuery = ref(d?.description ?? '')
 const suggestions = ref([])
 const showSuggestions = ref(false)
 const selectedFromCatalogue = ref(false)
@@ -146,9 +149,11 @@ function selectCatalogueItem(item) {
 }
 
 function getFormData() {
+  const { tags, ...rest } = form.value
   return {
-    ...form.value,
+    ...rest,
     description: searchQuery.value || form.value.description,
+    tag_ids: tags.map(t => t.id),
     _saveToLog: saveToLog.value && !selectedFromCatalogue.value,
   }
 }

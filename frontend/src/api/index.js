@@ -125,7 +125,7 @@ export const catalogueApi = {
 }
 
 export const calendarApi = {
-  getMonth: (year, month) => api.get('/calendar/' + year + '/' + month),
+  getMonth: (year, month) => api.get('/entries/calendar/' + year + '/' + month),
 }
 
 export const summariesApi = {

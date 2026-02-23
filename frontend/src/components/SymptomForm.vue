@@ -71,16 +71,19 @@ import { format } from 'date-fns'
 import { Smile, Meh, Frown } from 'lucide-vue-next'
 import TagSelector from './TagSelector.vue'
 
+const props = defineProps({ initialData: { type: Object, default: null } })
+
 const today = format(new Date(), 'yyyy-MM-dd')
 const now = format(new Date(), 'HH:mm')
 
+const d = props.initialData
 const form = ref({
-  entry_date: today,
-  entry_time: now,
-  description: '',
-  severity: 5,
-  notes: '',
-  tags: [],
+  entry_date: d?.entry_date ?? today,
+  entry_time: d?.entry_time ? String(d.entry_time).slice(0, 5) : now,
+  description: d?.description ?? '',
+  severity: d?.severity ?? 5,
+  notes: d?.notes ?? '',
+  tags: d?.tags ?? [],
 })
 
 const severityLabel = computed(() => {
@@ -100,7 +103,8 @@ const severityColor = computed(() => {
 })
 
 function getFormData() {
-  return { ...form.value }
+  const { tags, ...rest } = form.value
+  return { ...rest, tag_ids: tags.map(t => t.id) }
 }
 
 function reset() {

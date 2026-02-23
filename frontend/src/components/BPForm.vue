@@ -95,14 +95,27 @@ import { X } from 'lucide-vue-next'
 import BPBadge from './BPBadge.vue'
 import TagSelector from './TagSelector.vue'
 
+const props = defineProps({ initialData: { type: Object, default: null } })
+
 const today = format(new Date(), 'yyyy-MM-dd')
 const now = format(new Date(), 'HH:mm')
 
+function parseReadings(readings) {
+  if (!readings?.length) return [{ systolic: null, diastolic: null, pulse: null, recorded_at: now }]
+  return readings.map(r => ({
+    systolic: r.systolic ?? null,
+    diastolic: r.diastolic ?? null,
+    pulse: r.pulse ?? null,
+    recorded_at: r.recorded_at ? String(r.recorded_at).slice(11, 16) : now,
+  }))
+}
+
+const d = props.initialData
 const form = ref({
-  entry_date: today,
-  notes: '',
-  tags: [],
-  readings: [{ systolic: null, diastolic: null, pulse: null, recorded_at: now }],
+  entry_date: d?.entry_date ?? today,
+  notes: d?.notes ?? '',
+  tags: d?.tags ?? [],
+  readings: parseReadings(d?.readings),
 })
 
 const readingErrors = ref({})
@@ -130,8 +143,17 @@ function validateReading(i) {
 
 function getFormData() {
   return {
-    ...form.value,
-    readings: form.value.readings.filter(r => r.systolic && r.diastolic),
+    entry_date: form.value.entry_date,
+    notes: form.value.notes,
+    tag_ids: form.value.tags.map(t => t.id),
+    readings: form.value.readings
+      .filter(r => r.systolic && r.diastolic)
+      .map(r => ({
+        systolic: r.systolic,
+        diastolic: r.diastolic,
+        pulse: r.pulse,
+        recorded_at: form.value.entry_date + 'T' + r.recorded_at + ':00',
+      })),
   }
 }
 

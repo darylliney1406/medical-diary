@@ -183,8 +183,10 @@ async def create_symptom_entry(
     entry = SymptomEntry(user_id=user.id, entry_date=body.entry_date, entry_time=body.entry_time, description=body.description, severity=body.severity, notes=body.notes, tags=tags)
     session.add(entry)
     await session.commit()
-    await session.refresh(entry)
-    return entry
+    result = await session.execute(
+        select(SymptomEntry).options(selectinload(SymptomEntry.tags)).where(SymptomEntry.id == entry.id)
+    )
+    return result.scalar_one()
 
 
 @router.get("/symptom/{entry_id}", response_model=SymptomEntryOut)
@@ -207,8 +209,10 @@ async def update_symptom_entry(entry_id: uuid.UUID, body: SymptomEntryUpdate, se
     if body.tag_ids is not None:
         entry.tags = await _resolve_tags(session, user.id, body.tag_ids)
     await session.commit()
-    await session.refresh(entry)
-    return entry
+    result = await session.execute(
+        select(SymptomEntry).options(selectinload(SymptomEntry.tags)).where(SymptomEntry.id == entry.id)
+    )
+    return result.scalar_one()
 
 
 @router.delete("/symptom/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -248,8 +252,10 @@ async def create_food_entry(body: FoodEntryCreate, session: AsyncSession = Depen
     entry = FoodEntry(user_id=user.id, **data, tags=tags)
     session.add(entry)
     await session.commit()
-    await session.refresh(entry)
-    return entry
+    result = await session.execute(
+        select(FoodEntry).options(selectinload(FoodEntry.tags)).where(FoodEntry.id == entry.id)
+    )
+    return result.scalar_one()
 
 
 @router.get("/food/{entry_id}", response_model=FoodEntryOut)
@@ -272,8 +278,10 @@ async def update_food_entry(entry_id: uuid.UUID, body: FoodEntryUpdate, session:
     if body.tag_ids is not None:
         entry.tags = await _resolve_tags(session, user.id, body.tag_ids)
     await session.commit()
-    await session.refresh(entry)
-    return entry
+    result = await session.execute(
+        select(FoodEntry).options(selectinload(FoodEntry.tags)).where(FoodEntry.id == entry.id)
+    )
+    return result.scalar_one()
 
 
 @router.delete("/food/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
