@@ -1,4 +1,3 @@
-from __future__ import annotations
 import uuid
 from datetime import timedelta, timezone, datetime
 from fastapi import APIRouter, HTTPException, Response, Cookie, Depends, Request, status
