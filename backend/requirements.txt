@@ -8,6 +8,7 @@ pydantic[email]==2.9.2
 pydantic-settings==2.5.2
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
 pyotp==2.9.0
 qrcode[pil]==7.4.2
 anthropic==0.34.2
