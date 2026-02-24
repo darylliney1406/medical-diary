@@ -116,7 +116,7 @@ async def refresh(
     access_token = create_access_token(user)
     new_refresh = create_refresh_token(user.id)
     _set_refresh_cookie(response, new_refresh)
-    return TokenResponse(access_token=access_token)
+    return TokenResponse(access_token=access_token, user=UserOut.model_validate(user))
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

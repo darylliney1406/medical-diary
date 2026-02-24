@@ -79,4 +79,17 @@ router.beforeEach((to, from, next) => {
   next()
 })
 
+// When a lazy-loaded route chunk fails to fetch (stale service worker cache
+// after a redeploy), force a full page reload to the target route so the
+// browser picks up the latest index.html and correct chunk hashes.
+router.onError((error, to) => {
+  const isChunkError =
+    error?.message?.includes('Failed to fetch dynamically imported module') ||
+    error?.message?.includes('Importing a module script failed') ||
+    error?.message?.includes('Unable to preload CSS')
+  if (isChunkError) {
+    window.location.assign(to.fullPath)
+  }
+})
+
 export default router

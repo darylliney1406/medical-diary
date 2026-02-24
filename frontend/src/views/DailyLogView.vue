@@ -24,30 +24,26 @@
           <ChevronDown class="w-4 h-4 text-gray-400 transition-transform" :class="collapsedDays[day.date] ? 'rotate-180' : ''" />
         </button>
         <div v-if="!collapsedDays[day.date] && day.entries.length" class="space-y-2 pl-2 border-l-2 border-gray-100">
-          <EntryCard v-for="entry in day.entries" :key="entry._type+entry.id"
-            :entry="entry" :type="entry._type"
-            @view="openDetail(entry)"
-            @edit="openEdit(entry)"
-            @delete="confirmDelete(entry)" />
+          <div v-for="cat in dayCategories(day.entries)" :key="cat.key">
+            <div v-if="cat.entries.length">
+              <div class="flex items-center gap-1.5 py-1">
+                <div class="w-5 h-5 rounded flex items-center justify-center" :class="cat.bg">
+                  <component :is="cat.icon" class="w-3 h-3" :class="cat.color" />
+                </div>
+                <span class="text-xs font-semibold uppercase tracking-wide" :class="cat.color">{{ cat.label }}</span>
+              </div>
+              <div class="space-y-1.5 ml-1">
+                <EntryCard v-for="entry in cat.entries" :key="entry._type+entry.id"
+                  :entry="entry" :type="entry._type"
+                  @view="openDetail(entry)"
+                  @edit="openEdit(entry)"
+                  @delete="confirmDelete(entry)" />
+              </div>
+            </div>
+          </div>
         </div>
         <p v-else-if="!collapsedDays[day.date]" class="text-sm text-gray-400 pl-2">No entries.</p>
       </div>
-    </div>
-
-    <!-- AI Summary -->
-    <div class="mt-6 card">
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2">
-          <Sparkles class="w-4 h-4 text-indigo-600" />
-          <h2 class="text-sm font-semibold">Weekly AI Summary</h2>
-        </div>
-        <button @click="generateSummary" :disabled="summaryLoading" class="text-xs text-indigo-600 font-medium">
-          <Loader2 v-if="summaryLoading" class="w-3 h-3 animate-spin inline" />
-          <span v-else>Generate</span>
-        </button>
-      </div>
-      <div v-if="summary" class="markdown-content" v-html="renderMarkdown(summary)"></div>
-      <p v-else class="text-sm text-gray-400 italic">No summary generated yet.</p>
     </div>
 
     <button @click="exportWeek" class="mt-4 w-full btn-secondary flex items-center justify-center gap-2">
@@ -165,10 +161,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, shallowRef } from 'vue'
-import { startOfWeek, endOfWeek, eachDayOfInterval, format, isToday, addWeeks, subWeeks, getISOWeek } from 'date-fns'
-import { ChevronLeft, ChevronRight, ChevronDown, Sparkles, Loader2, Download, Trash2, Pencil, X, Calendar } from 'lucide-vue-next'
-import { bpApi, symptomApi, foodApi, gymApi, summariesApi, exportApi } from '@/api'
+import { ref, computed, onMounted, watch } from 'vue'
+import { startOfWeek, endOfWeek, eachDayOfInterval, format, isToday, addWeeks, subWeeks } from 'date-fns'
+import { ChevronLeft, ChevronRight, ChevronDown, Loader2, Download, Trash2, Pencil, X, Calendar, Activity, Pill, UtensilsCrossed, Dumbbell } from 'lucide-vue-next'
+import { bpApi, symptomApi, foodApi, gymApi, exportApi } from '@/api'
 import { useEntriesStore } from '@/stores/entries'
 import { useToast } from '@/composables/useToast'
 import EntryCard from '@/components/EntryCard.vue'
@@ -182,8 +178,6 @@ const entries = useEntriesStore()
 const loading = ref(false)
 const currentWeekStart = ref(startOfWeek(new Date(), { weekStartsOn: 1 }))
 const allEntries = ref([])
-const summary = ref(null)
-const summaryLoading = ref(false)
 const collapsedDays = ref({})
 const pendingDelete = ref(null)
 const deleting = ref(false)
@@ -208,11 +202,6 @@ const weekDays = computed(() => {
       entries: allEntries.value.filter(e => e.entry_date === ds) }
   })
 })
-const isoWeek = computed(() => {
-  const yr = format(currentWeekStart.value, "yyyy")
-  const wk = String(getISOWeek(currentWeekStart.value)).padStart(2, "0")
-  return yr + "-W" + wk
-})
 const detailTypeLabel = computed(() => {
   if (!detailEntry.value) return ''
   return { bp: 'Blood Pressure', symptom: 'Symptom', food: 'Food', gym: 'Gym' }[detailEntry.value._type] || ''
@@ -227,24 +216,30 @@ watch(currentWeekStart, fetchWeek)
 
 async function fetchWeek() {
   loading.value = true
-  summary.value = null
   const startStr = format(currentWeekStart.value, "yyyy-MM-dd")
   const endStr = format(endOfWeek(currentWeekStart.value, { weekStartsOn: 1 }), "yyyy-MM-dd")
   try {
     const params = { start_date: startStr, end_date: endStr, limit: 100 }
     const results = await Promise.allSettled([
       bpApi.list(params), symptomApi.list(params), foodApi.list(params), gymApi.list(params),
-      summariesApi.getWeekly(isoWeek.value),
     ])
-    const [bp, sym, food, gym, sum] = results
+    const [bp, sym, food, gym] = results
     allEntries.value = [
       ...(bp.value?.data?.items || bp.value?.data || []).map(e => ({ ...e, _type: "bp" })),
       ...(sym.value?.data?.items || sym.value?.data || []).map(e => ({ ...e, _type: "symptom" })),
       ...(food.value?.data?.items || food.value?.data || []).map(e => ({ ...e, _type: "food" })),
       ...(gym.value?.data?.items || gym.value?.data || []).map(e => ({ ...e, _type: "gym" })),
     ]
-    if (sum.status === "fulfilled") summary.value = sum.value?.data?.content || sum.value?.data?.summary
   } finally { loading.value = false }
+}
+
+function dayCategories(dayEntries) {
+  return [
+    { key: 'bp', label: 'Blood Pressure', icon: Activity, bg: 'bg-blue-100', color: 'text-blue-600', entries: dayEntries.filter(e => e._type === 'bp') },
+    { key: 'symptom', label: 'Symptoms', icon: Pill, bg: 'bg-orange-100', color: 'text-orange-600', entries: dayEntries.filter(e => e._type === 'symptom') },
+    { key: 'food', label: 'Food & Drink', icon: UtensilsCrossed, bg: 'bg-green-100', color: 'text-green-600', entries: dayEntries.filter(e => e._type === 'food') },
+    { key: 'gym', label: 'Gym', icon: Dumbbell, bg: 'bg-purple-100', color: 'text-purple-600', entries: dayEntries.filter(e => e._type === 'gym') },
+  ]
 }
 
 function prevWeek() { currentWeekStart.value = subWeeks(currentWeekStart.value, 1) }
@@ -292,36 +287,6 @@ async function saveEdit() {
   } finally { saving.value = false }
 }
 
-async function generateSummary() {
-  summaryLoading.value = true
-  try {
-    const { data } = await summariesApi.generateWeekly(isoWeek.value)
-    summary.value = data.content || data.summary
-    toast("Summary generated")
-  } catch { toast("Failed to generate", "error") } finally { summaryLoading.value = false }
-}
-
-function renderMarkdown(md) {
-  if (!md) return ''
-  let html = md
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/^---+$/gm, '<hr>')
-  html = html.replace(/((?:^.*\|.*$\n?)+)/gm, (block) => {
-    const rows = block.trim().split('\n').filter(r => !/^[\s|:-]+$/.test(r))
-    if (rows.length < 1) return block
-    const toRow = (r, tag) => '<tr>' + r.split('|').slice(1,-1).map(c => `<${tag} class="px-2 py-1 border border-gray-200">${c.trim()}</${tag}>`).join('') + '</tr>'
-    const [head, ...body] = rows
-    return `<table class="w-full text-xs border-collapse my-2"><thead class="bg-gray-50">${toRow(head,'th')}</thead><tbody>${body.map(r=>toRow(r,'td')).join('')}</tbody></table>`
-  })
-  html = html.replace(/\n\n+/g, '</p><p class="mt-2">').replace(/\n/g, '<br>')
-  return `<p>${html}</p>`
-}
-
 async function exportWeek() {
   try {
     const s = format(currentWeekStart.value, "yyyy-MM-dd")
@@ -333,15 +298,3 @@ async function exportWeek() {
   } catch { toast("Export failed", "error") }
 }
 </script>
-
-<style scoped>
-.markdown-content :deep(h1) { @apply text-base font-bold text-gray-900 mt-3 mb-1; }
-.markdown-content :deep(h2) { @apply text-sm font-bold text-gray-800 mt-3 mb-1; }
-.markdown-content :deep(h3) { @apply text-sm font-semibold text-gray-700 mt-2 mb-0.5; }
-.markdown-content :deep(h4) { @apply text-xs font-semibold text-gray-600 mt-1; }
-.markdown-content :deep(p)  { @apply text-sm text-gray-700; }
-.markdown-content :deep(strong) { @apply font-semibold; }
-.markdown-content :deep(hr)  { @apply border-gray-200 my-2; }
-.markdown-content :deep(table) { @apply w-full text-xs border-collapse my-2 overflow-x-auto block; }
-.markdown-content :deep(th)  { @apply bg-gray-100 font-semibold text-left; }
-</style>

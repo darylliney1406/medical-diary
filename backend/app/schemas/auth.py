@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from .user import UserOut
 
 
 class LoginRequest(BaseModel):
@@ -26,6 +27,7 @@ class PasswordResetRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    user: UserOut | None = None
 
 
 class MFARequiredResponse(BaseModel):
