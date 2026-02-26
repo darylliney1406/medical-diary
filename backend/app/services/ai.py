@@ -1,6 +1,7 @@
 from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 import anthropic
 from ..config import get_settings
 from ..models.entries import BPEntry, SymptomEntry, FoodEntry, GymEntry
@@ -25,7 +26,9 @@ async def _get_daily_context(session: AsyncSession, user_id, target_date: date) 
     lines = [f"Date: {target_date.isoformat()}"]
 
     bp_result = await session.execute(
-        select(BPEntry).where(BPEntry.user_id == user_id, BPEntry.entry_date == target_date)
+        select(BPEntry).options(selectinload(BPEntry.readings)).where(
+            BPEntry.user_id == user_id, BPEntry.entry_date == target_date
+        )
     )
     bp_entries = bp_result.scalars().all()
     if bp_entries:
@@ -58,7 +61,9 @@ async def _get_daily_context(session: AsyncSession, user_id, target_date: date) 
             lines.append(f"- {f.entry_time.strftime('%H:%M')} [{f.meal_type.value}]: {f.description}")
 
     gym_result = await session.execute(
-        select(GymEntry).where(GymEntry.user_id == user_id, GymEntry.entry_date == target_date)
+        select(GymEntry).options(selectinload(GymEntry.exercises)).where(
+            GymEntry.user_id == user_id, GymEntry.entry_date == target_date
+        )
     )
     gyms = gym_result.scalars().all()
     if gyms:
@@ -128,10 +133,9 @@ async def generate_weekly_summary(session: AsyncSession, user_id, week_start: da
     medical_context = await _get_user_medical_context(session, user_id)
 
     # Collect all BP readings for the week
-    from datetime import timedelta
     bp_lines = []
     bp_result = await session.execute(
-        select(BPEntry).where(
+        select(BPEntry).options(selectinload(BPEntry.readings)).where(
             BPEntry.user_id == user_id,
             BPEntry.entry_date >= week_start,
             BPEntry.entry_date <= week_end,
@@ -153,7 +157,7 @@ async def generate_weekly_summary(session: AsyncSession, user_id, week_start: da
     sym_lines = [f"{s.entry_date} {s.entry_time}: {s.description}" + (f" (severity {s.severity}/10)" if s.severity else "") for s in sym_result.scalars().all()]
 
     gym_result = await session.execute(
-        select(GymEntry).where(
+        select(GymEntry).options(selectinload(GymEntry.exercises)).where(
             GymEntry.user_id == user_id,
             GymEntry.entry_date >= week_start,
             GymEntry.entry_date <= week_end,

@@ -121,13 +121,23 @@ const bpStats = computed(() => {
   const sessions = []
   for (const entry of bpData.value) {
     for (const r of (entry.readings || [])) {
-      sessions.push({ id: r.id || Math.random(), date: entry.entry_date, time: r.recorded_at || "",
-        reading: r.systolic + "/" + r.diastolic + " (" + r.pulse + " bpm)", sys: r.systolic, dia: r.diastolic })
+      const dt = r.recorded_at ? new Date(r.recorded_at) : null
+      const timeStr = dt ? dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''
+      const hour = dt ? dt.getHours() : -1
+      sessions.push({
+        id: r.id || Math.random(),
+        date: entry.entry_date,
+        time: timeStr,
+        hour,
+        reading: r.systolic + "/" + r.diastolic + " (" + r.pulse + " bpm)",
+        sys: r.systolic,
+        dia: r.diastolic,
+      })
     }
   }
-  const morning = sessions.filter(s => { const h = parseInt(s.time.split(":")[0]); return h >= 6 && h < 12 })
-  const evening = sessions.filter(s => { const h = parseInt(s.time.split(":")[0]); return h >= 18 })
-  const avg = (arr, key) => arr.length ? Math.round(arr.reduce((a,s) => a + s[key], 0) / arr.length) : null
+  const morning = sessions.filter(s => s.hour >= 6 && s.hour < 12)
+  const evening = sessions.filter(s => s.hour >= 18)
+  const avg = (arr, key) => arr.length ? Math.round(arr.reduce((a, s) => a + s[key], 0) / arr.length) : null
   const morningAvg = morning.length ? avg(morning, "sys") + "/" + avg(morning, "dia") : "N/A"
   const eveningAvg = evening.length ? avg(evening, "sys") + "/" + avg(evening, "dia") : "N/A"
   return { sessions, morningAvg, eveningAvg }
@@ -140,7 +150,7 @@ async function fetchWeek() {
   const e = format(endOfWeek(currentWeekStart.value, { weekStartsOn: 1 }), "yyyy-MM-dd")
   try {
     const [bp, sym, sum] = await Promise.allSettled([
-      bpApi.list({ start_date: s, end_date: e, limit: 200 }),
+      bpApi.list({ start_date: s, end_date: e, limit: 100 }),
       symptomApi.list({ start_date: s, end_date: e, limit: 100 }),
       summariesApi.getWeekly(isoWeek.value),
     ])
