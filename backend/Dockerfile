@@ -6,7 +6,9 @@ RUN apt-get update && apt-get install -y \
     libharfbuzz0b \
     libffi-dev \
     libcairo2 \
-    libgdk-pixbuf-2.0-0\
+    libgdk-pixbuf-2.0-0 \
+    libfontconfig1 \
+    fonts-liberation \
     curl \
     && rm -rf /var/lib/apt/lists/*
 

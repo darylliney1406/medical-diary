@@ -23,7 +23,9 @@
       <div class="grid grid-cols-4 gap-2">
         <button v-for="q in quickAdd" :key="q.type" @click="router.push('/new-entry?type=' + q.type)"
           class="flex flex-col items-center gap-1.5 py-3 rounded-xl border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all">
-          <component :is="q.icon" class="w-6 h-6" />
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center" :class="q.iconBg">
+            <component :is="q.icon" class="w-4 h-4" :class="q.iconColor" />
+          </div>
           <span class="text-xs font-medium text-gray-600">{{ q.label }}</span>
         </button>
       </div>
@@ -240,10 +242,10 @@ const editError = ref('')
 const saving = ref(false)
 
 const quickAdd = [
-  { type: "bp", label: "BP", icon: Heart },
-  { type: "symptom", label: "Symptom", icon: Thermometer },
-  { type: "food", label: "Food", icon: Utensils },
-  { type: "gym", label: "Gym", icon: Dumbbell },
+  { type: "bp", label: "BP", icon: Heart, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
+  { type: "symptom", label: "Symptom", icon: Thermometer, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
+  { type: "food", label: "Food", icon: Utensils, iconBg: "bg-green-100", iconColor: "text-green-600" },
+  { type: "gym", label: "Gym", icon: Dumbbell, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
 ]
 
 const categories = computed(() => [

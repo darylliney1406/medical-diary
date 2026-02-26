@@ -1,5 +1,6 @@
+import asyncio
 from datetime import date
-from io import BytesIO
+from html import escape
 from weasyprint import HTML
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -36,15 +37,15 @@ def _build_html(
     summary_content: str | None,
 ) -> str:
     dob = identity.date_of_birth.isoformat() if identity and identity.date_of_birth else "—"
-    nhs = identity.nhs_number if identity and identity.nhs_number else "—"
-    gp = identity.gp_name if identity and identity.gp_name else "—"
+    nhs = escape(identity.nhs_number) if identity and identity.nhs_number else "—"
+    gp = escape(identity.gp_name) if identity and identity.gp_name else "—"
 
     html = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <style>
-  body {{ font-family: Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 20px; }}
+  body {{ font-family: Liberation Sans, Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 20px; }}
   h1 {{ font-size: 20px; color: #4f46e5; margin-bottom: 4px; }}
   h2 {{ font-size: 15px; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin-top: 20px; }}
   .header-meta {{ color: #6b7280; font-size: 11px; margin-bottom: 16px; }}
@@ -54,17 +55,16 @@ def _build_html(
   .bp-badge {{ display: inline-block; padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; font-size: 10px; }}
   .summary-box {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; white-space: pre-wrap; font-size: 11px; line-height: 1.5; }}
   .entry-block {{ margin-bottom: 12px; }}
-  .tag {{ display: inline-block; background: #e0e7ff; color: #4338ca; border-radius: 3px; padding: 1px 5px; font-size: 10px; margin-right: 3px; }}
 </style>
 </head>
 <body>
-<h1>MediDiary — Health Record Export</h1>
+<h1>MediDiary - Health Record Export</h1>
 <div class="header-meta">
-  <strong>Name:</strong> {user.name} &nbsp;|&nbsp;
-  <strong>Date of Birth:</strong> {dob} &nbsp;|&nbsp;
-  <strong>NHS Number:</strong> {nhs} &nbsp;|&nbsp;
+  <strong>Name:</strong> {escape(user.name)} |
+  <strong>Date of Birth:</strong> {dob} |
+  <strong>NHS Number:</strong> {nhs} |
   <strong>GP:</strong> {gp}<br>
-  <strong>Period:</strong> {start_date.isoformat()} to {end_date.isoformat()} &nbsp;|&nbsp;
+  <strong>Period:</strong> {start_date.isoformat()} to {end_date.isoformat()} |
   <strong>Generated:</strong> {date.today().isoformat()}
 </div>
 """
@@ -178,7 +178,6 @@ async def generate_pdf(
         if summary:
             summary_content = summary.content
 
-    html = _build_html(user, identity, start_date, end_date, list(bp_entries), list(symptoms), list(foods), list(gyms), summary_content)
-    buf = BytesIO()
-    HTML(string=html).write_pdf(buf)
-    return buf.getvalue()
+    html_content = _build_html(user, identity, start_date, end_date, list(bp_entries), list(symptoms), list(foods), list(gyms), summary_content)
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: HTML(string=html_content).write_pdf())

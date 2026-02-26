@@ -23,7 +23,6 @@
       </div>
       <form v-else @submit.prevent="saveIdentity" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div><label class="label">Full name</label><input v-model="identity.name" type="text" class="input-field" /></div>
           <div><label class="label">Date of birth</label><input v-model="identity.date_of_birth" type="date" class="input-field" /></div>
           <div><label class="label">NHS number</label><input v-model="identity.nhs_number" type="text" class="input-field" placeholder="XXX XXX XXXX" /></div>
           <div><label class="label">Blood type</label>
@@ -33,10 +32,11 @@
             </select>
           </div>
           <div><label class="label">GP Name</label><input v-model="identity.gp_name" type="text" class="input-field" /></div>
-          <div><label class="label">GP Practice</label><input v-model="identity.gp_practice" type="text" class="input-field" /></div>
+          <div><label class="label">GP Surgery</label><input v-model="identity.gp_surgery" type="text" class="input-field" /></div>
+          <div><label class="label">Emergency contact name</label><input v-model="identity.emergency_contact_name" type="text" class="input-field" placeholder="Name and relationship" /></div>
+          <div><label class="label">Emergency contact phone</label><input v-model="identity.emergency_contact_phone" type="text" class="input-field" placeholder="Phone number" /></div>
         </div>
         <div><label class="label">Allergies</label><textarea v-model="identity.allergies" class="input-field" rows="2"></textarea></div>
-        <div><label class="label">Emergency contact</label><input v-model="identity.emergency_contact" type="text" class="input-field" placeholder="Name, relationship, phone" /></div>
         <div class="flex justify-end">
           <button type="submit" class="btn-primary" :disabled="saving">
             <Loader2 v-if="saving" class="w-4 h-4 animate-spin inline mr-1" />Save changes
@@ -53,7 +53,6 @@
           <div><label class="label">Height (cm)</label><input v-model.number="metrics.height_cm" type="number" class="input-field" /></div>
           <div><label class="label">Weight (kg)</label><input v-model.number="metrics.weight_kg" type="number" step="0.1" class="input-field" /></div>
         </div>
-        <div><label class="label">Recorded date</label><input v-model="metrics.recorded_date" type="date" class="input-field" /></div>
         <button type="submit" class="btn-primary">Add metrics</button>
       </form>
     </div>
@@ -67,8 +66,8 @@
       <div v-for="d in diagnoses" :key="d.id" class="card">
         <div class="flex items-start justify-between">
           <div>
-            <p class="font-medium text-gray-900">{{ d.name }}</p>
-            <p class="text-sm text-gray-500 mt-0.5">{{ d.diagnosed_date }}</p>
+            <p class="font-medium text-gray-900">{{ d.condition_name }}</p>
+            <p class="text-sm text-gray-500 mt-0.5">{{ d.diagnosed_at }}</p>
             <p v-if="d.notes" class="text-sm text-gray-600 mt-1">{{ d.notes }}</p>
           </div>
           <button @click="deleteDiagnosis(d.id)" class="text-gray-300 hover:text-red-500"><Trash2 class="w-4 h-4" /></button>
@@ -76,8 +75,8 @@
       </div>
       <div v-if="showDiagnosisForm" class="card">
         <form @submit.prevent="addDiagnosis" class="space-y-3">
-          <div><label class="label">Condition name</label><input v-model="newDiagnosis.name" type="text" class="input-field" required /></div>
-          <div><label class="label">Diagnosed date</label><input v-model="newDiagnosis.diagnosed_date" type="date" class="input-field" /></div>
+          <div><label class="label">Condition name</label><input v-model="newDiagnosis.condition_name" type="text" class="input-field" required /></div>
+          <div><label class="label">Diagnosed date</label><input v-model="newDiagnosis.diagnosed_at" type="date" class="input-field" /></div>
           <div><label class="label">Notes</label><textarea v-model="newDiagnosis.notes" class="input-field" rows="2"></textarea></div>
           <div class="flex gap-2">
             <button type="button" @click="showDiagnosisForm = false" class="btn-secondary flex-1">Cancel</button>
@@ -99,11 +98,11 @@
           <div class="flex-1">
             <div class="flex items-center gap-2">
               <p class="font-medium text-gray-900">{{ med.name }}</p>
-              <span class="text-xs px-2 py-0.5 rounded-full" :class="med.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
-                {{ med.active ? 'Active' : 'Inactive' }}
+              <span class="text-xs px-2 py-0.5 rounded-full" :class="med.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
+                {{ med.is_active ? 'Active' : 'Inactive' }}
               </span>
             </div>
-            <p class="text-sm text-gray-500">{{ med.dose }} {{ med.frequency }}</p>
+            <p class="text-sm text-gray-500">{{ med.dosage }} {{ med.frequency }}</p>
           </div>
           <div class="flex gap-2">
             <button @click="toggleMedication(med)" class="text-gray-400 hover:text-green-500"><ToggleLeft class="w-5 h-5" /></button>
@@ -115,7 +114,7 @@
         <form @submit.prevent="addMedication" class="space-y-3">
           <div><label class="label">Medication name</label><input v-model="newMed.name" type="text" class="input-field" required /></div>
           <div class="grid grid-cols-2 gap-3">
-            <div><label class="label">Dose</label><input v-model="newMed.dose" type="text" class="input-field" placeholder="e.g. 10mg" /></div>
+            <div><label class="label">Dose</label><input v-model="newMed.dosage" type="text" class="input-field" placeholder="e.g. 10mg" /></div>
             <div><label class="label">Frequency</label><input v-model="newMed.frequency" type="text" class="input-field" placeholder="e.g. once daily" /></div>
           </div>
           <div class="flex gap-2">
@@ -159,20 +158,21 @@ const tabs = [
   { id: 'account', label: 'Account' },
 ]
 const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-const identity = ref({ name: "", date_of_birth: "", nhs_number: "", blood_type: "", gp_name: "", gp_practice: "", allergies: "", emergency_contact: "" })
-const metrics = ref({ height_cm: null, weight_kg: null, recorded_date: new Date().toISOString().slice(0,10) })
+const identity = ref({ date_of_birth: "", nhs_number: "", blood_type: "", gp_name: "", gp_surgery: "", allergies: "", emergency_contact_name: "", emergency_contact_phone: "" })
+const metrics = ref({ height_cm: null, weight_kg: null })
 const diagnoses = ref([])
 const medications = ref([])
 const showDiagnosisForm = ref(false)
 const showMedForm = ref(false)
-const newDiagnosis = ref({ name: "", diagnosed_date: "", notes: "" })
-const newMed = ref({ name: "", dose: "", frequency: "", active: true })
+const newDiagnosis = ref({ condition_name: "", diagnosed_at: "", notes: "" })
+const newMed = ref({ name: "", dosage: "", frequency: "", is_active: true })
 const pwForm = ref({ current: "", new: "", confirm: "" })
 onMounted(async () => {
   loading.value = true
   try {
     const { data } = await profileApi.get()
     if (data.identity) Object.assign(identity.value, data.identity)
+    if (data.body_metrics) Object.assign(metrics.value, data.body_metrics)
     if (data.diagnoses) diagnoses.value = data.diagnoses
     if (data.medications) medications.value = data.medications
   } finally { loading.value = false }
@@ -190,7 +190,7 @@ async function addDiagnosis() {
   try {
     const { data } = await profileApi.addDiagnosis(newDiagnosis.value)
     diagnoses.value.push(data)
-    newDiagnosis.value = { name: "", diagnosed_date: "", notes: "" }
+    newDiagnosis.value = { condition_name: "", diagnosed_at: "", notes: "" }
     showDiagnosisForm.value = false
     toast("Diagnosis added")
   } catch { toast("Failed", "error") }
@@ -204,14 +204,14 @@ async function addMedication() {
   try {
     const { data } = await profileApi.addMedication(newMed.value)
     medications.value.push(data)
-    newMed.value = { name: "", dose: "", frequency: "", active: true }
+    newMed.value = { name: "", dosage: "", frequency: "", is_active: true }
     showMedForm.value = false
     toast("Medication added")
   } catch { toast("Failed", "error") }
 }
 async function toggleMedication(med) {
   try {
-    const { data } = await profileApi.updateMedication(med.id, { active: !med.active })
+    const { data } = await profileApi.updateMedication(med.id, { is_active: !med.is_active })
     const idx = medications.value.findIndex(m => m.id === med.id)
     if (idx !== -1) medications.value[idx] = data
   } catch { toast("Failed", "error") }
