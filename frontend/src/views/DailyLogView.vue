@@ -46,9 +46,6 @@
       </div>
     </div>
 
-    <button @click="exportWeek" class="mt-4 w-full btn-secondary flex items-center justify-center gap-2">
-      <Download class="w-4 h-4" /> Export week as PDF
-    </button>
   </div>
 
   <!-- ── Delete confirmation ─────────────────────────────── -->
@@ -163,8 +160,8 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, isToday, addWeeks, subWeeks } from 'date-fns'
-import { ChevronLeft, ChevronRight, ChevronDown, Loader2, Download, Trash2, Pencil, X, Calendar, Activity, Pill, UtensilsCrossed, Dumbbell } from 'lucide-vue-next'
-import { bpApi, symptomApi, foodApi, gymApi, exportApi } from '@/api'
+import { ChevronLeft, ChevronRight, ChevronDown, Loader2, Trash2, Pencil, X, Calendar, Activity, Pill, UtensilsCrossed, Dumbbell } from 'lucide-vue-next'
+import { bpApi, symptomApi, foodApi, gymApi } from '@/api'
 import { useEntriesStore } from '@/stores/entries'
 import { useToast } from '@/composables/useToast'
 import EntryCard from '@/components/EntryCard.vue'
@@ -287,14 +284,4 @@ async function saveEdit() {
   } finally { saving.value = false }
 }
 
-async function exportWeek() {
-  try {
-    const s = format(currentWeekStart.value, "yyyy-MM-dd")
-    const e = format(endOfWeek(currentWeekStart.value, { weekStartsOn: 1 }), "yyyy-MM-dd")
-    const { data } = await exportApi.pdf({ type: "weekly", start_date: s, end_date: e, include_summary: true })
-    const url = URL.createObjectURL(data)
-    const a = document.createElement("a"); a.href = url; a.download = "week-log.pdf"; a.click()
-    URL.revokeObjectURL(url)
-  } catch { toast("Export failed", "error") }
-}
 </script>
