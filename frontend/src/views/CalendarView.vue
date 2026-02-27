@@ -2,7 +2,6 @@
   <div class="max-w-2xl mx-auto px-4 py-6">
     <div class="flex items-center justify-between mb-5">
       <h1 class="text-xl font-bold text-gray-900">Calendar</h1>
-      <button @click="showExport = true" class="btn-secondary text-sm px-3 py-1.5">Export PDF</button>
     </div>
     <div class="flex items-center justify-between mb-4 card">
       <button @click="prevMonth" class="p-2 rounded-lg hover:bg-gray-100"><ChevronLeft class="w-5 h-5" /></button>
@@ -50,34 +49,13 @@
       </div>
       <p v-else class="text-sm text-gray-400 text-center py-4">No entries for this day.</p>
     </div>
-    <div v-if="showExport" class="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 bg-black/40" @click.self="showExport = false">
-      <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
-        <h3 class="text-lg font-semibold mb-4">Export as PDF</h3>
-        <div class="space-y-3">
-          <div class="grid grid-cols-2 gap-3">
-            <div><label class="label">From</label><input v-model="exportForm.start_date" type="date" class="input-field" /></div>
-            <div><label class="label">To</label><input v-model="exportForm.end_date" type="date" class="input-field" /></div>
-          </div>
-          <label class="flex items-center gap-2 text-sm">
-            <input v-model="exportForm.include_summary" type="checkbox" class="rounded" />
-            Include AI summary
-          </label>
-        </div>
-        <div class="flex gap-3 mt-4">
-          <button @click="showExport = false" class="btn-secondary flex-1">Cancel</button>
-          <button @click="downloadPdf" class="btn-primary flex-1" :disabled="exporting">
-            <span v-if="exporting">Exporting...</span><span v-else>Download PDF</span>
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, parseISO, isToday } from 'date-fns'
 import { ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
-import { calendarApi, bpApi, symptomApi, foodApi, gymApi, exportApi } from '@/api'
+import { calendarApi, bpApi, symptomApi, foodApi, gymApi } from '@/api'
 import { useToast } from '@/composables/useToast'
 import EntryCard from '@/components/EntryCard.vue'
 
@@ -86,12 +64,8 @@ const loading = ref(false)
 const currentDate = ref(new Date())
 const calData = ref([])
 const selectedDay = ref(null)
-const showExport = ref(false)
-const exporting = ref(false)
 const dayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const dayEntries = ref({ loading: false, all: [] })
-const exportForm = ref({ start_date: format(new Date(), 'yyyy-MM-01'), end_date: format(new Date(), 'yyyy-MM-dd'), include_summary: true })
-
 const monthLabel = computed(() => format(currentDate.value, 'MMMM yyyy'))
 
 const calendarDays = computed(() => {
@@ -155,15 +129,4 @@ async function selectDay(day) {
 function handleEdit(entry) { console.log('edit', entry) }
 function handleDelete(entry) { dayEntries.value.all = dayEntries.value.all.filter(e => e.id !== entry.id) }
 
-async function downloadPdf() {
-  exporting.value = true
-  try {
-    const { data } = await exportApi.pdf({ type: 'full', ...exportForm.value })
-    const url = URL.createObjectURL(data)
-    const a = document.createElement('a'); a.href = url; a.download = 'medidiary-export.pdf'; a.click()
-    URL.revokeObjectURL(url)
-    showExport.value = false
-    toast('PDF exported')
-  } catch { toast('Export failed', 'error') } finally { exporting.value = false }
-}
 </script>
