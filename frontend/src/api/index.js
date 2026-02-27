@@ -124,6 +124,12 @@ export const catalogueApi = {
   delete: (id) => api.delete('/catalogue/' + id),
 }
 
+export const exerciseCatalogueApi = {
+  search: (params) => api.get('/exercise-catalogue', { params }),
+  create: (data) => api.post('/exercise-catalogue', data),
+  delete: (id) => api.delete('/exercise-catalogue/' + id),
+}
+
 export const calendarApi = {
   getMonth: (year, month) => api.get('/entries/calendar/' + year + '/' + month),
 }

@@ -2,26 +2,14 @@
   <div class="space-y-4">
     <!-- Date -->
     <div>
-      <label class="label">Date</label>
-      <input v-model="form.entry_date" type="date" class="input-field" :max="today" />
-    </div>
-
-    <!-- Session Notes -->
-    <div>
-      <label class="label">Session notes</label>
-      <textarea v-model="form.session_notes" class="input-field" rows="2" placeholder="How was the session?"></textarea>
-    </div>
-
-    <!-- Tags -->
-    <div>
-      <label class="label">Tags</label>
-      <TagSelector v-model="form.tags" />
+      <label class="label">Date <span class="text-red-500">*</span></label>
+      <input v-model="form.entry_date" type="date" class="input-field" :max="today" required />
     </div>
 
     <!-- Exercises -->
     <div>
       <div class="flex items-center justify-between mb-3">
-        <label class="label mb-0">Exercises</label>
+        <label class="label mb-0">Exercises <span class="text-red-500">*</span></label>
         <button type="button" @click="addExercise" class="text-sm text-indigo-600 font-medium hover:text-indigo-700">
           + Add exercise
         </button>
@@ -44,13 +32,34 @@
               </button>
             </div>
 
-            <!-- Machine name -->
-            <input
-              v-model="ex.machine"
-              type="text"
-              class="input-field flex-1"
-              placeholder="Exercise / machine name"
-            />
+            <!-- Machine name with autocomplete -->
+            <div class="relative flex-1">
+              <input
+                v-model="ex.machine"
+                type="text"
+                class="input-field w-full"
+                placeholder="Exercise / machine name"
+                @input="onExerciseInput(i)"
+                @focus="onExerciseFocus(i)"
+                @blur="onExerciseBlur(i)"
+              />
+              <!-- Suggestions dropdown -->
+              <div
+                v-if="ex._showSuggestions && ex._suggestions.length"
+                class="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+              >
+                <button
+                  v-for="s in ex._suggestions"
+                  :key="s.id"
+                  type="button"
+                  @mousedown.prevent
+                  @click="selectExercise(i, s)"
+                  class="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm font-medium text-gray-900"
+                >
+                  {{ s.name }}
+                </button>
+              </div>
+            </div>
 
             <!-- Mode toggle -->
             <div class="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
@@ -61,6 +70,12 @@
             <button type="button" @click="removeExercise(i)" class="text-gray-300 hover:text-red-500">
               <X class="w-4 h-4" />
             </button>
+          </div>
+
+          <!-- Save to exercise list option -->
+          <div v-if="!ex._fromCatalogue && ex.machine" class="flex items-center gap-2">
+            <input v-model="ex._saveToList" type="checkbox" :id="'save-ex-' + i" class="rounded" />
+            <label :for="'save-ex-' + i" class="text-sm text-gray-600">Save to exercise list</label>
           </div>
 
           <!-- Cardio mode: duration only -->
@@ -91,6 +106,18 @@
         No exercises yet. Tap "+ Add exercise" to get started.
       </p>
     </div>
+
+    <!-- Tags -->
+    <div>
+      <label class="label">Tags</label>
+      <TagSelector v-model="form.tags" />
+    </div>
+
+    <!-- Notes (was Session Notes) -->
+    <div>
+      <label class="label">Notes</label>
+      <textarea v-model="form.session_notes" class="input-field" rows="2" placeholder="How was the session?"></textarea>
+    </div>
   </div>
 </template>
 
@@ -98,6 +125,7 @@
 import { ref } from 'vue'
 import { format } from 'date-fns'
 import { X, ChevronUp, ChevronDown } from 'lucide-vue-next'
+import { exerciseCatalogueApi } from '@/api'
 import TagSelector from './TagSelector.vue'
 
 const props = defineProps({ initialData: { type: Object, default: null } })
@@ -113,6 +141,10 @@ function parseExercises(exercises) {
     sets: ex.sets ?? null,
     reps: ex.reps ?? null,
     weight_kg: ex.weight_kg ?? null,
+    _fromCatalogue: true,
+    _saveToList: false,
+    _showSuggestions: false,
+    _suggestions: [],
   }))
 }
 
@@ -124,6 +156,45 @@ const form = ref({
   exercises: parseExercises(d?.exercises),
 })
 
+const searchTimers = {}
+
+async function loadSuggestions(i, query) {
+  try {
+    const { data } = await exerciseCatalogueApi.search(query ? { search: query } : {})
+    form.value.exercises[i]._suggestions = (data.items || data).slice(0, 8)
+  } catch {
+    form.value.exercises[i]._suggestions = []
+  }
+}
+
+async function onExerciseFocus(i) {
+  form.value.exercises[i]._showSuggestions = true
+  if (form.value.exercises[i]._suggestions.length === 0) {
+    await loadSuggestions(i, form.value.exercises[i].machine)
+  }
+}
+
+function onExerciseBlur(i) {
+  setTimeout(() => {
+    if (form.value.exercises[i]) {
+      form.value.exercises[i]._showSuggestions = false
+    }
+  }, 200)
+}
+
+function onExerciseInput(i) {
+  form.value.exercises[i]._fromCatalogue = false
+  if (searchTimers[i]) clearTimeout(searchTimers[i])
+  searchTimers[i] = setTimeout(() => loadSuggestions(i, form.value.exercises[i].machine), 300)
+}
+
+function selectExercise(i, suggestion) {
+  form.value.exercises[i].machine = suggestion.name
+  form.value.exercises[i]._fromCatalogue = true
+  form.value.exercises[i]._saveToList = false
+  form.value.exercises[i]._showSuggestions = false
+}
+
 function addExercise() {
   form.value.exercises.push({
     machine: '',
@@ -132,6 +203,10 @@ function addExercise() {
     sets: null,
     reps: null,
     weight_kg: null,
+    _fromCatalogue: false,
+    _saveToList: false,
+    _showSuggestions: false,
+    _suggestions: [],
   })
 }
 
@@ -154,11 +229,20 @@ function moveDown(i) {
 }
 
 function getFormData() {
+  if (!form.value.entry_date) throw new Error('Date is required')
+  if (form.value.exercises.length === 0) throw new Error('At least one exercise is required')
+  for (let i = 0; i < form.value.exercises.length; i++) {
+    if (!form.value.exercises[i].machine?.trim()) throw new Error(`Exercise ${i + 1}: name is required`)
+  }
+  const newExerciseNames = form.value.exercises
+    .filter(ex => !ex._fromCatalogue && ex._saveToList && ex.machine?.trim())
+    .map(ex => ex.machine.trim())
   return {
     entry_date: form.value.entry_date,
     session_notes: form.value.session_notes,
     tag_ids: form.value.tags.map(t => t.id),
-    exercises: form.value.exercises.map(({ _mode, ...ex }) => ex),
+    exercises: form.value.exercises.map(({ _mode, _fromCatalogue, _saveToList, _showSuggestions, _suggestions, ...ex }) => ex),
+    _newExerciseNames: newExerciseNames,
   }
 }
 

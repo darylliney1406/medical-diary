@@ -57,6 +57,9 @@ class User(Base):
     food_catalogue: Mapped[list[FoodCatalogueItem]] = relationship(
         "FoodCatalogueItem", back_populates="user", cascade="all, delete-orphan"
     )
+    exercise_catalogue: Mapped[list[ExerciseCatalogueItem]] = relationship(
+        "ExerciseCatalogueItem", back_populates="user", cascade="all, delete-orphan"
+    )
     ai_summaries: Mapped[list[AISummary]] = relationship(
         "AISummary", back_populates="user", cascade="all, delete-orphan"
     )
@@ -64,4 +67,4 @@ class User(Base):
 
 # Avoid circular import — imported here for type checking only
 from .profile import UserIdentityProfile, UserBodyMetrics, Diagnosis, Medication, Tag  # noqa: E402
-from .entries import BPEntry, SymptomEntry, FoodEntry, GymEntry, FoodCatalogueItem, AISummary  # noqa: E402
+from .entries import BPEntry, SymptomEntry, FoodEntry, GymEntry, FoodCatalogueItem, ExerciseCatalogueItem, AISummary  # noqa: E402

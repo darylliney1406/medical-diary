@@ -4,7 +4,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from .config import get_settings
-from .routers import auth, users, profile, entries, tags, catalogue, summaries, export
+from .routers import auth, users, profile, entries, tags, catalogue, exercise_catalogue, summaries, export
 
 settings = get_settings()
 
@@ -33,8 +33,9 @@ app.include_router(users.router,     prefix="/api/v1/users",     tags=["users"])
 app.include_router(profile.router,   prefix="/api/v1/profile",   tags=["profile"])
 app.include_router(entries.router,   prefix="/api/v1/entries",   tags=["entries"])
 app.include_router(tags.router,      prefix="/api/v1/tags",      tags=["tags"])
-app.include_router(catalogue.router, prefix="/api/v1/catalogue", tags=["catalogue"])
-app.include_router(summaries.router, prefix="/api/v1/summaries", tags=["summaries"])
+app.include_router(catalogue.router,          prefix="/api/v1/catalogue",          tags=["catalogue"])
+app.include_router(exercise_catalogue.router, prefix="/api/v1/exercise-catalogue", tags=["exercise-catalogue"])
+app.include_router(summaries.router,          prefix="/api/v1/summaries",          tags=["summaries"])
 app.include_router(export.router,    prefix="/api/v1/export",    tags=["export"])
 
 

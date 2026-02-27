@@ -3,23 +3,23 @@
     <!-- Date and Time -->
     <div class="grid grid-cols-2 gap-3">
       <div>
-        <label class="label">Date</label>
-        <input v-model="form.entry_date" type="date" class="input-field" :max="today" />
+        <label class="label">Date <span class="text-red-500">*</span></label>
+        <input v-model="form.entry_date" type="date" class="input-field" :max="today" required />
       </div>
       <div>
-        <label class="label">Time</label>
-        <input v-model="form.entry_time" type="time" class="input-field" />
+        <label class="label">Time <span class="text-red-500">*</span></label>
+        <input v-model="form.entry_time" type="time" class="input-field" required />
       </div>
     </div>
 
     <!-- Description -->
     <div>
-      <label class="label">Description</label>
+      <label class="label">Description <span class="text-red-500">*</span></label>
       <textarea
         v-model="form.description"
         class="input-field"
         rows="4"
-        placeholder="Describe your symptom in detail..."
+        placeholder="Describe how you are feeling in detail..."
         required
       ></textarea>
     </div>
@@ -27,7 +27,7 @@
     <!-- Severity -->
     <div>
       <div class="flex items-center justify-between mb-2">
-        <label class="label mb-0">Severity (optional)</label>
+        <label class="label mb-0">Severity <span class="text-red-500">*</span></label>
         <span class="text-sm font-medium" :class="severityColor">{{ severityLabel }}</span>
       </div>
       <div class="relative pt-1">
@@ -56,12 +56,6 @@
       <label class="label">Tags</label>
       <TagSelector v-model="form.tags" />
     </div>
-
-    <!-- Notes -->
-    <div>
-      <label class="label">Additional notes</label>
-      <textarea v-model="form.notes" class="input-field" rows="2" placeholder="Any additional context..."></textarea>
-    </div>
   </div>
 </template>
 
@@ -82,7 +76,6 @@ const form = ref({
   entry_time: d?.entry_time ? String(d.entry_time).slice(0, 5) : now,
   description: d?.description ?? '',
   severity: d?.severity ?? 5,
-  notes: d?.notes ?? '',
   tags: d?.tags ?? [],
 })
 
@@ -103,6 +96,10 @@ const severityColor = computed(() => {
 })
 
 function getFormData() {
+  if (!form.value.entry_date) throw new Error('Date is required')
+  if (!form.value.entry_time) throw new Error('Time is required')
+  if (!form.value.description?.trim()) throw new Error('Description is required')
+  if (!form.value.severity) throw new Error('Severity is required')
   const { tags, ...rest } = form.value
   return { ...rest, tag_ids: tags.map(t => t.id) }
 }
@@ -113,7 +110,6 @@ function reset() {
     entry_time: format(new Date(), 'HH:mm'),
     description: '',
     severity: 5,
-    notes: '',
     tags: [],
   }
 }

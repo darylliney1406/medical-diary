@@ -2,15 +2,15 @@
   <div class="space-y-4">
     <!-- Date -->
     <div>
-      <label class="label">Date</label>
-      <input v-model="form.entry_date" type="date" class="input-field" :max="today" />
+      <label class="label">Date <span class="text-red-500">*</span></label>
+      <input v-model="form.entry_date" type="date" class="input-field" :max="today" required />
     </div>
 
     <!-- Readings -->
     <div>
       <div class="flex items-center justify-between mb-2">
-        <label class="label mb-0">Readings</label>
-        <button v-if="form.readings.length < 3" type="button" @click="addReading" class="text-sm text-indigo-600 font-medium hover:text-indigo-700">
+        <label class="label mb-0">Readings <span class="text-red-500">*</span></label>
+        <button type="button" @click="addReading" class="text-sm text-indigo-600 font-medium hover:text-indigo-700">
           + Add reading
         </button>
       </div>
@@ -26,7 +26,7 @@
 
           <div class="grid grid-cols-3 gap-2">
             <div>
-              <label class="label text-xs">Systolic</label>
+              <label class="label text-xs">Systolic <span class="text-red-500">*</span></label>
               <input
                 v-model.number="reading.systolic"
                 type="number"
@@ -37,7 +37,7 @@
               />
             </div>
             <div>
-              <label class="label text-xs">Diastolic</label>
+              <label class="label text-xs">Diastolic <span class="text-red-500">*</span></label>
               <input
                 v-model.number="reading.diastolic"
                 type="number"
@@ -48,7 +48,7 @@
               />
             </div>
             <div>
-              <label class="label text-xs">Pulse</label>
+              <label class="label text-xs">Pulse <span class="text-red-500">*</span></label>
               <input
                 v-model.number="reading.pulse"
                 type="number"
@@ -61,8 +61,8 @@
 
           <!-- Time -->
           <div>
-            <label class="label text-xs">Time</label>
-            <input v-model="reading.recorded_at" type="time" class="input-field" />
+            <label class="label text-xs">Time <span class="text-red-500">*</span></label>
+            <input v-model="reading.recorded_at" type="time" class="input-field" required />
           </div>
 
           <!-- Live BP badge -->
@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { format } from 'date-fns'
 import { X } from 'lucide-vue-next'
 import BPBadge from './BPBadge.vue'
@@ -121,9 +121,7 @@ const form = ref({
 const readingErrors = ref({})
 
 function addReading() {
-  if (form.value.readings.length < 3) {
-    form.value.readings.push({ systolic: null, diastolic: null, pulse: null, recorded_at: format(new Date(), 'HH:mm') })
-  }
+  form.value.readings.push({ systolic: null, diastolic: null, pulse: null, recorded_at: format(new Date(), 'HH:mm') })
 }
 
 function removeReading(i) {
@@ -142,6 +140,14 @@ function validateReading(i) {
 }
 
 function getFormData() {
+  if (!form.value.entry_date) throw new Error('Date is required')
+  for (let i = 0; i < form.value.readings.length; i++) {
+    const r = form.value.readings[i]
+    if (!r.systolic) throw new Error(`Reading ${i + 1}: Systolic is required`)
+    if (!r.diastolic) throw new Error(`Reading ${i + 1}: Diastolic is required`)
+    if (!r.pulse) throw new Error(`Reading ${i + 1}: Pulse is required`)
+    if (!r.recorded_at) throw new Error(`Reading ${i + 1}: Time is required`)
+  }
   return {
     entry_date: form.value.entry_date,
     notes: form.value.notes,

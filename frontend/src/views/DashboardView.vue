@@ -231,7 +231,7 @@ const loading = ref(false)
 const dailySummary = ref(null)
 const summaryLoading = ref(false)
 const todayDate = format(new Date(), "yyyy-MM-dd")
-const collapsedCats = ref({})
+const collapsedCats = ref({ bp: true, symptom: true, food: true, gym: true })
 
 const pendingDelete = ref(null)
 const deleting = ref(false)
@@ -243,7 +243,7 @@ const saving = ref(false)
 
 const quickAdd = [
   { type: "bp", label: "BP", icon: Heart, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
-  { type: "symptom", label: "Symptom", icon: Thermometer, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
+  { type: "symptom", label: "Feeling", icon: Thermometer, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
   { type: "food", label: "Food", icon: Utensils, iconBg: "bg-green-100", iconColor: "text-green-600" },
   { type: "gym", label: "Gym", icon: Dumbbell, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
 ]
@@ -259,7 +259,7 @@ const categories = computed(() => [
   },
   {
     key: 'symptom',
-    label: 'Symptoms',
+    label: 'How I am feeling',
     icon: Pill,
     bg: 'bg-orange-100',
     color: 'text-orange-600',
@@ -296,7 +296,7 @@ const formattedDate = computed(() => format(new Date(), "EEEE, d MMMM yyyy"))
 
 const detailTypeLabel = computed(() => {
   if (!detailEntry.value) return ''
-  return { bp: 'Blood Pressure', symptom: 'Symptom', food: 'Food', gym: 'Gym' }[detailEntry.value._type] || ''
+  return { bp: 'Blood Pressure', symptom: 'How I am feeling', food: 'Food', gym: 'Gym' }[detailEntry.value._type] || ''
 })
 const editFormComponent = computed(() => {
   if (!editEntry.value) return null

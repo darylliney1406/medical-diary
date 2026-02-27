@@ -43,9 +43,7 @@ class BPEntryCreate(BaseModel):
 
     @field_validator("readings")
     @classmethod
-    def max_readings(cls, v: list) -> list:
-        if len(v) > 3:
-            raise ValueError("A BP entry can have at most 3 readings")
+    def validate_readings(cls, v: list) -> list:
         if len(v) == 0:
             raise ValueError("At least one reading is required")
         return v
@@ -170,6 +168,19 @@ class FoodEntryOut(BaseModel):
     tags: list[TagOut]
     created_at: datetime
     updated_at: datetime
+
+
+# ── Exercise Catalogue ───────────────────────────────────────────────────────
+
+class ExerciseCatalogueItemCreate(BaseModel):
+    name: str
+
+
+class ExerciseCatalogueItemOut(ExerciseCatalogueItemCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    user_id: uuid.UUID
+    created_at: datetime
 
 
 # ── Gym ─────────────────────────────────────────────────────────────────────
