@@ -3,10 +3,10 @@
     <h1 class="text-xl font-bold text-gray-900 mb-5">Profile</h1>
 
     <!-- AI Data Banner -->
-    <div class="mb-5 rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm">
+    <div v-if="showAiBanner" class="mb-5 rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm">
       <div class="flex items-start gap-3">
         <Info class="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
-        <div class="space-y-2">
+        <div class="flex-1 space-y-2">
           <p class="font-medium text-indigo-900">What gets shared with AI summaries</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
             <div>
@@ -31,19 +31,27 @@
             </div>
           </div>
         </div>
+        <button @click="dismissAiBanner" class="text-indigo-300 hover:text-indigo-500 shrink-0 -mt-0.5">
+          <X class="w-4 h-4" />
+        </button>
       </div>
     </div>
 
     <!-- Tab Navigation -->
-    <div class="flex overflow-x-auto gap-1 mb-5 pb-1">
+    <div class="grid grid-cols-5 gap-2 mb-5">
       <button
         v-for="tab in tabs"
         :key="tab.id"
         @click="activeTab = tab.id"
-        class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors"
-        :class="activeTab === tab.id ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+        class="flex flex-col items-center gap-1.5 py-3 rounded-xl border transition-all"
+        :class="activeTab === tab.id
+          ? 'border-indigo-400 bg-indigo-50'
+          : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50'"
       >
-        {{ tab.label }}
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" :class="tab.iconBg">
+          <component :is="tab.icon" class="w-4 h-4" :class="tab.iconColor" />
+        </div>
+        <span class="text-xs font-medium text-gray-600 leading-tight text-center">{{ tab.label }}</span>
       </button>
     </div>
 
@@ -175,19 +183,24 @@
 </template>
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Loader2, Trash2, ToggleLeft, Info } from 'lucide-vue-next'
+import { Loader2, Trash2, ToggleLeft, Info, X, User, Ruler, Stethoscope, Pill, Settings } from 'lucide-vue-next'
 import { profileApi } from '@/api'
 import { useToast } from '@/composables/useToast'
 const { toast } = useToast()
 const loading = ref(false)
 const saving = ref(false)
+const showAiBanner = ref(localStorage.getItem('profile_ai_banner_dismissed') !== 'true')
+function dismissAiBanner() {
+  showAiBanner.value = false
+  localStorage.setItem('profile_ai_banner_dismissed', 'true')
+}
 const activeTab = ref('identity')
 const tabs = [
-  { id: 'identity', label: 'Personal Details' },
-  { id: 'metrics', label: 'Body Metrics' },
-  { id: 'diagnoses', label: 'Diagnoses' },
-  { id: 'medications', label: 'Medications' },
-  { id: 'account', label: 'Account' },
+  { id: 'identity',    label: 'Personal',    icon: User,         iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600' },
+  { id: 'metrics',     label: 'Metrics',     icon: Ruler,        iconBg: 'bg-blue-100',   iconColor: 'text-blue-600' },
+  { id: 'diagnoses',   label: 'Diagnoses',   icon: Stethoscope,  iconBg: 'bg-orange-100', iconColor: 'text-orange-600' },
+  { id: 'medications', label: 'Medications', icon: Pill,         iconBg: 'bg-green-100',  iconColor: 'text-green-600' },
+  { id: 'account',     label: 'Account',     icon: Settings,     iconBg: 'bg-gray-100',   iconColor: 'text-gray-500' },
 ]
 const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 const identity = ref({ date_of_birth: "", nhs_number: "", blood_type: "", gp_name: "", gp_surgery: "", allergies: "", emergency_contact_name: "", emergency_contact_phone: "" })
