@@ -48,12 +48,6 @@
           <span v-else>Save entry</span>
         </button>
       </div>
-
-      <!-- Post-save actions -->
-      <div v-if="savedOnce" class="mt-3 flex gap-3">
-        <button @click="addAnother" class="btn-secondary flex-1 text-sm">Add another</button>
-        <button @click="router.push('/dashboard')" class="btn-secondary flex-1 text-sm">Go to dashboard</button>
-      </div>
     </template>
   </div>
 </template>
@@ -64,6 +58,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { Loader2, Heart, Thermometer, Utensils, Dumbbell } from 'lucide-vue-next'
 import { useEntriesStore } from '@/stores/entries'
 import { useToast } from '@/composables/useToast'
+import { catalogueApi, exerciseCatalogueApi } from '@/api'
 import BPForm from '@/components/BPForm.vue'
 import SymptomForm from '@/components/SymptomForm.vue'
 import FoodForm from '@/components/FoodForm.vue'
@@ -85,11 +80,11 @@ const types = [
   },
   {
     value: 'symptom',
-    label: 'Symptom',
+    label: 'How I am feeling',
     icon: Thermometer,
     iconBg: 'bg-orange-100',
     iconColor: 'text-orange-600',
-    description: 'Log a symptom and rate its severity out of 10',
+    description: 'Log how you are feeling and rate severity out of 10',
   },
   {
     value: 'food',
@@ -115,7 +110,6 @@ const activeType = computed(() => route.query.type || null)
 const formRef = ref(null)
 const saving = ref(false)
 const error = ref('')
-const savedOnce = ref(false)
 
 const activeForm = computed(() => {
   return { bp: BPForm, symptom: SymptomForm, food: FoodForm, gym: GymForm }[activeType.value]
@@ -133,21 +127,38 @@ async function handleSave() {
   error.value = ''
   saving.value = true
   try {
-    const data = formRef.value.getFormData()
-    await saveActions[activeType.value](data)
+    const formData = formRef.value.getFormData()
+
+    // Extract side-effect flags before sending to API
+    const { _saveToLog, _newExerciseNames, ...apiData } = formData
+
+    await saveActions[activeType.value](apiData)
+
+    // Save to food catalogue if requested
+    if (activeType.value === 'food' && _saveToLog && apiData.description) {
+      try {
+        await catalogueApi.create({
+          name: apiData.description,
+          category: apiData.meal_type === 'drink' ? 'drink' : 'food',
+        })
+      } catch { /* don't fail the entry save if catalogue save fails */ }
+    }
+
+    // Save new exercise names to exercise catalogue
+    if (activeType.value === 'gym' && _newExerciseNames?.length) {
+      for (const name of _newExerciseNames) {
+        try {
+          await exerciseCatalogueApi.create({ name })
+        } catch { /* ignore duplicates or errors */ }
+      }
+    }
+
     toast('Entry saved successfully')
-    savedOnce.value = true
     formRef.value.reset()
   } catch (e) {
-    error.value = e.response?.data?.detail || 'Failed to save entry. Please try again.'
+    error.value = e.response?.data?.detail || e.message || 'Failed to save entry. Please try again.'
   } finally {
     saving.value = false
   }
-}
-
-function addAnother() {
-  savedOnce.value = false
-  error.value = ''
-  if (formRef.value) formRef.value.reset()
 }
 </script>

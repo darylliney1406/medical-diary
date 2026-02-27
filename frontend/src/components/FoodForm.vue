@@ -3,18 +3,18 @@
     <!-- Date and Time -->
     <div class="grid grid-cols-2 gap-3">
       <div>
-        <label class="label">Date</label>
-        <input v-model="form.entry_date" type="date" class="input-field" :max="today" />
+        <label class="label">Date <span class="text-red-500">*</span></label>
+        <input v-model="form.entry_date" type="date" class="input-field" :max="today" required />
       </div>
       <div>
-        <label class="label">Time</label>
-        <input v-model="form.entry_time" type="time" class="input-field" />
+        <label class="label">Time <span class="text-red-500">*</span></label>
+        <input v-model="form.entry_time" type="time" class="input-field" required />
       </div>
     </div>
 
     <!-- Meal Type -->
     <div>
-      <label class="label">Meal type</label>
+      <label class="label">Meal type <span class="text-red-500">*</span></label>
       <div class="grid grid-cols-5 gap-2">
         <button
           v-for="m in mealTypes"
@@ -28,19 +28,21 @@
           {{ m.label }}
         </button>
       </div>
+      <p v-if="!form.meal_type" class="text-xs text-gray-400 mt-1">Please select a meal type</p>
     </div>
 
     <!-- Description with catalogue search -->
     <div>
-      <label class="label">Food / Drink</label>
+      <label class="label">Food / Drink <span class="text-red-500">*</span></label>
       <div class="relative">
         <input
           v-model="searchQuery"
           type="text"
           class="input-field"
-          placeholder="Search catalogue or type freely..."
+          placeholder="Search saved items or type freely..."
           @input="onSearchInput"
-          @focus="showSuggestions = true"
+          @focus="onFocus"
+          @blur="onBlur"
         />
         <!-- Catalogue suggestions -->
         <div
@@ -51,6 +53,7 @@
             v-for="item in suggestions"
             :key="item.id"
             type="button"
+            @mousedown.prevent
             @click="selectCatalogueItem(item)"
             class="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center justify-between"
           >
@@ -68,8 +71,8 @@
 
     <!-- Quantity -->
     <div>
-      <label class="label">Quantity / portion</label>
-      <input v-model="form.quantity" type="text" class="input-field" placeholder="e.g. 1 cup, 200g, 1 slice" />
+      <label class="label">Quantity / portion <span class="text-red-500">*</span></label>
+      <input v-model="form.quantity" type="text" class="input-field" placeholder="e.g. 1 cup, 200g, 1 slice" required />
     </div>
 
     <!-- Tags -->
@@ -110,7 +113,7 @@ const d = props.initialData
 const form = ref({
   entry_date: d?.entry_date ?? today,
   entry_time: d?.entry_time ? String(d.entry_time).slice(0, 5) : now,
-  meal_type: d?.meal_type ?? 'snack',
+  meal_type: d?.meal_type ?? null,
   description: d?.description ?? '',
   quantity: d?.quantity ?? '',
   catalogue_item_id: d?.catalogue_item_id ?? null,
@@ -125,12 +128,37 @@ const selectedFromCatalogue = ref(false)
 const saveToLog = ref(false)
 
 let searchTimer = null
+let blurTimer = null
+
+async function onFocus() {
+  showSuggestions.value = true
+  if (blurTimer) { clearTimeout(blurTimer); blurTimer = null }
+  // Preload all items when focused with empty or short query
+  if (!searchQuery.value || suggestions.value.length === 0) {
+    try {
+      const { data } = await catalogueApi.search({ search: searchQuery.value || '' })
+      suggestions.value = (data.items || data).slice(0, 8)
+    } catch { suggestions.value = [] }
+  }
+}
+
+function onBlur() {
+  blurTimer = setTimeout(() => { showSuggestions.value = false }, 200)
+}
 
 async function onSearchInput() {
   selectedFromCatalogue.value = false
   form.value.catalogue_item_id = null
   if (searchTimer) clearTimeout(searchTimer)
-  if (!searchQuery.value) { suggestions.value = []; return }
+  if (!searchQuery.value) {
+    suggestions.value = []
+    // Reload all items
+    try {
+      const { data } = await catalogueApi.search({})
+      suggestions.value = (data.items || data).slice(0, 8)
+    } catch { suggestions.value = [] }
+    return
+  }
   searchTimer = setTimeout(async () => {
     try {
       const { data } = await catalogueApi.search({ search: searchQuery.value })
@@ -149,6 +177,11 @@ function selectCatalogueItem(item) {
 }
 
 function getFormData() {
+  if (!form.value.entry_date) throw new Error('Date is required')
+  if (!form.value.entry_time) throw new Error('Time is required')
+  if (!form.value.meal_type) throw new Error('Meal type is required')
+  if (!searchQuery.value?.trim()) throw new Error('Food / Drink description is required')
+  if (!form.value.quantity?.trim()) throw new Error('Quantity / portion is required')
   const { tags, ...rest } = form.value
   return {
     ...rest,
@@ -162,7 +195,7 @@ function reset() {
   form.value = {
     entry_date: today,
     entry_time: format(new Date(), 'HH:mm'),
-    meal_type: 'snack',
+    meal_type: null,
     description: '',
     quantity: '',
     catalogue_item_id: null,
