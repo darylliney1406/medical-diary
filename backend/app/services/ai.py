@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 import anthropic
 from ..config import get_settings
 from ..models.entries import BPEntry, SymptomEntry, FoodEntry, GymEntry
-from ..models.profile import Diagnosis, Medication
+from ..models.profile import UserIdentityProfile, UserBodyMetrics, Diagnosis, Medication
 
 
 def _bp_category(systolic: int, diastolic: int) -> str:
@@ -80,18 +80,60 @@ async def _get_daily_context(session: AsyncSession, user_id, target_date: date) 
 
 
 async def _get_user_medical_context(session: AsyncSession, user_id) -> str:
+    identity_result = await session.execute(
+        select(UserIdentityProfile).where(UserIdentityProfile.user_id == user_id)
+    )
+    identity = identity_result.scalar_one_or_none()
+
+    metrics_result = await session.execute(
+        select(UserBodyMetrics).where(UserBodyMetrics.user_id == user_id)
+        .order_by(UserBodyMetrics.recorded_at.desc())
+    )
+    metrics = metrics_result.scalars().first()
+
     diag_result = await session.execute(select(Diagnosis).where(Diagnosis.user_id == user_id))
     diagnoses = diag_result.scalars().all()
-    med_result = await session.execute(select(Medication).where(Medication.user_id == user_id, Medication.is_active == True))
+
+    med_result = await session.execute(
+        select(Medication).where(Medication.user_id == user_id, Medication.is_active == True)
+    )
     medications = med_result.scalars().all()
 
     lines = []
+
+    if identity:
+        if identity.date_of_birth:
+            today = date.today()
+            age = today.year - identity.date_of_birth.year - (
+                (today.month, today.day) < (identity.date_of_birth.month, identity.date_of_birth.day)
+            )
+            lines.append(f"Age: {age}")
+        if identity.allergies:
+            lines.append(f"Allergies / intolerances: {identity.allergies}")
+
+    if metrics:
+        m_parts = []
+        if metrics.gender:
+            m_parts.append(f"gender {metrics.gender}")
+        if metrics.height_cm:
+            m_parts.append(f"height {metrics.height_cm} cm")
+        if metrics.weight_kg:
+            m_parts.append(f"weight {metrics.weight_kg} kg")
+        if metrics.height_cm and metrics.weight_kg:
+            bmi = round(metrics.weight_kg / ((metrics.height_cm / 100) ** 2), 1)
+            m_parts.append(f"BMI {bmi}")
+        if metrics.activity_level:
+            m_parts.append(f"activity level {metrics.activity_level.value.replace('_', ' ')}")
+        if m_parts:
+            lines.append("Body metrics: " + ", ".join(m_parts))
+
     if diagnoses:
         lines.append("Diagnoses: " + ", ".join(d.condition_name for d in diagnoses))
     if medications:
-        meds = ", ".join(f"{m.name} {m.dosage} {m.frequency}" for m in medications)
+        meds = ", ".join(f"{m.name} {m.dosage} {m.frequency}".strip() for m in medications)
         lines.append(f"Current medications: {meds}")
-    return "\n".join(lines)
+
+    return "\n".join(lines) if lines else "No profile information recorded."
 
 
 async def generate_daily_summary(session: AsyncSession, user_id, target_date: date) -> str:
@@ -119,7 +161,7 @@ Write a concise, professional daily summary suitable for sharing with a GP. Incl
 Tone: clinical but readable. Do not be alarmist. Be factual and specific."""
 
     message = client.messages.create(
-        model="claude-opus-4-6",
+        model="claude-sonnet-4-6",
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
     )

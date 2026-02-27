@@ -2,6 +2,38 @@
   <div class="max-w-2xl mx-auto px-4 py-6">
     <h1 class="text-xl font-bold text-gray-900 mb-5">Profile</h1>
 
+    <!-- AI Data Banner -->
+    <div class="mb-5 rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm">
+      <div class="flex items-start gap-3">
+        <Info class="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
+        <div class="space-y-2">
+          <p class="font-medium text-indigo-900">What gets shared with AI summaries</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+            <div>
+              <p class="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">Sent to AI</p>
+              <ul class="text-xs text-gray-700 space-y-0.5">
+                <li>✓ Age (calculated, not date of birth)</li>
+                <li>✓ Allergies &amp; intolerances</li>
+                <li>✓ Body metrics (height, weight, BMI, gender, activity level)</li>
+                <li>✓ Diagnoses</li>
+                <li>✓ Active medications</li>
+              </ul>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">Never sent to AI</p>
+              <ul class="text-xs text-gray-700 space-y-0.5">
+                <li>✗ Date of birth</li>
+                <li>✗ NHS number</li>
+                <li>✗ Blood type</li>
+                <li>✗ GP details</li>
+                <li>✗ Emergency contact</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Tab Navigation -->
     <div class="flex overflow-x-auto gap-1 mb-5 pb-1">
       <button
@@ -143,7 +175,7 @@
 </template>
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Loader2, Trash2, ToggleLeft } from 'lucide-vue-next'
+import { Loader2, Trash2, ToggleLeft, Info } from 'lucide-vue-next'
 import { profileApi } from '@/api'
 import { useToast } from '@/composables/useToast'
 const { toast } = useToast()

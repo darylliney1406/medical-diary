@@ -179,5 +179,5 @@ async def generate_pdf(
             summary_content = summary.content
 
     html_content = _build_html(user, identity, start_date, end_date, list(bp_entries), list(symptoms), list(foods), list(gyms), summary_content)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, lambda: HTML(string=html_content).write_pdf())
