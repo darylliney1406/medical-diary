@@ -21,9 +21,9 @@
             <span v-if="day.isToday" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">Today</span>
             <span class="text-xs text-gray-400">{{ day.entries.length }} entries</span>
           </div>
-          <ChevronDown class="w-4 h-4 text-gray-400 transition-transform" :class="collapsedDays[day.date] ? 'rotate-180' : ''" />
+          <ChevronDown class="w-4 h-4 text-gray-400 transition-transform" :class="isDayExpanded(day) ? '' : 'rotate-180'" />
         </button>
-        <div v-if="!collapsedDays[day.date] && day.entries.length" class="space-y-2 pl-2 border-l-2 border-gray-100">
+        <div v-if="isDayExpanded(day) && day.entries.length" class="space-y-2 pl-2 border-l-2 border-gray-100">
           <div v-for="cat in dayCategories(day.entries)" :key="cat.key">
             <div v-if="cat.entries.length">
               <div class="flex items-center gap-1.5 py-1">
@@ -42,7 +42,7 @@
             </div>
           </div>
         </div>
-        <p v-else-if="!collapsedDays[day.date]" class="text-sm text-gray-400 pl-2">No entries.</p>
+        <p v-else-if="isDayExpanded(day)" class="text-sm text-gray-400 pl-2">No entries.</p>
       </div>
     </div>
 
@@ -233,7 +233,7 @@ async function fetchWeek() {
 function dayCategories(dayEntries) {
   return [
     { key: 'bp', label: 'Blood Pressure', icon: Activity, bg: 'bg-blue-100', color: 'text-blue-600', entries: dayEntries.filter(e => e._type === 'bp') },
-    { key: 'symptom', label: 'Symptoms', icon: Pill, bg: 'bg-orange-100', color: 'text-orange-600', entries: dayEntries.filter(e => e._type === 'symptom') },
+    { key: 'symptom', label: 'How I am feeling', icon: Pill, bg: 'bg-orange-100', color: 'text-orange-600', entries: dayEntries.filter(e => e._type === 'symptom') },
     { key: 'food', label: 'Food & Drink', icon: UtensilsCrossed, bg: 'bg-green-100', color: 'text-green-600', entries: dayEntries.filter(e => e._type === 'food') },
     { key: 'gym', label: 'Gym', icon: Dumbbell, bg: 'bg-purple-100', color: 'text-purple-600', entries: dayEntries.filter(e => e._type === 'gym') },
   ]
@@ -241,7 +241,16 @@ function dayCategories(dayEntries) {
 
 function prevWeek() { currentWeekStart.value = subWeeks(currentWeekStart.value, 1) }
 function nextWeek() { currentWeekStart.value = addWeeks(currentWeekStart.value, 1) }
-function toggleDay(date) { collapsedDays.value[date] = !collapsedDays.value[date] }
+
+function isDayExpanded(day) {
+  const val = collapsedDays.value[day.date]
+  if (val === undefined) return day.isToday
+  return val
+}
+function toggleDay(date) {
+  const day = weekDays.value.find(d => d.date === date)
+  collapsedDays.value[date] = !isDayExpanded(day)
+}
 
 function openDetail(entry) { detailEntry.value = entry }
 function openEdit(entry) { editEntry.value = { ...entry }; editError.value = '' }
