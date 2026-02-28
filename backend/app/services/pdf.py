@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import date
 from html import escape
 from weasyprint import HTML
@@ -8,6 +9,85 @@ from sqlalchemy.orm import selectinload
 from ..models.entries import BPEntry, SymptomEntry, FoodEntry, GymEntry, AISummary, SummaryType
 from ..models.user import User
 from ..models.profile import UserIdentityProfile
+
+
+def _inline(text: str) -> str:
+    """Escape HTML then apply inline markdown (bold, italic)."""
+    text = escape(text)
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+    return text
+
+
+def _markdown_to_html(md: str) -> str:
+    """Convert a markdown string to HTML for PDF rendering."""
+    lines = md.split('\n')
+    out = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        # Horizontal rule
+        if re.match(r'^-{3,}$', stripped):
+            out.append('<hr class="ai-hr">')
+            i += 1
+            continue
+
+        # Headings — map #/##/### down one level to avoid clashing with doc h2
+        if stripped.startswith('### '):
+            out.append(f'<h5 class="ai-h3">{_inline(stripped[4:])}</h5>')
+            i += 1
+            continue
+        if stripped.startswith('## '):
+            out.append(f'<h4 class="ai-h2">{_inline(stripped[3:])}</h4>')
+            i += 1
+            continue
+        if stripped.startswith('# '):
+            out.append(f'<h3 class="ai-h1">{_inline(stripped[2:])}</h3>')
+            i += 1
+            continue
+
+        # Table — header row followed by a separator row (|---|---|)
+        if '|' in stripped and i + 1 < len(lines) and re.match(r'^\|[\s\-:|]+\|$', lines[i + 1].strip()):
+            header_cells = [c.strip() for c in stripped.strip('|').split('|')]
+            tbl = '<table class="ai-table"><tr>'
+            for h in header_cells:
+                tbl += f'<th>{_inline(h)}</th>'
+            tbl += '</tr>'
+            i += 2  # skip header + separator
+            while i < len(lines) and '|' in lines[i]:
+                cells = [c.strip() for c in lines[i].strip('|').split('|')]
+                tbl += '<tr>'
+                for c in cells:
+                    tbl += f'<td>{_inline(c)}</td>'
+                tbl += '</tr>'
+                i += 1
+            tbl += '</table>'
+            out.append(tbl)
+            continue
+
+        # Bullet list — collect consecutive bullet lines
+        if re.match(r'^\s*- ', line):
+            list_html = '<ul class="ai-list">'
+            while i < len(lines) and re.match(r'^\s*- ', lines[i]):
+                item_text = lines[i].lstrip()[2:]
+                list_html += f'<li>{_inline(item_text)}</li>'
+                i += 1
+            list_html += '</ul>'
+            out.append(list_html)
+            continue
+
+        # Empty line — skip
+        if not stripped:
+            i += 1
+            continue
+
+        # Regular paragraph
+        out.append(f'<p class="ai-p">{_inline(stripped)}</p>')
+        i += 1
+
+    return '\n'.join(out)
 
 
 def _bp_category_colour(systolic: int, diastolic: int) -> tuple[str, str]:
@@ -53,8 +133,17 @@ def _build_html(
   th {{ background: #f3f4f6; text-align: left; padding: 6px 8px; font-size: 11px; }}
   td {{ padding: 5px 8px; border-bottom: 1px solid #f3f4f6; font-size: 11px; }}
   .bp-badge {{ display: inline-block; padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; font-size: 10px; }}
-  .summary-box {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; white-space: pre-wrap; font-size: 11px; line-height: 1.5; }}
   .entry-block {{ margin-bottom: 12px; }}
+  .ai-h1 {{ font-size: 14px; font-weight: bold; color: #1f2937; margin: 12px 0 4px; }}
+  .ai-h2 {{ font-size: 13px; font-weight: bold; color: #374151; margin: 10px 0 3px; }}
+  .ai-h3 {{ font-size: 12px; font-weight: 600; color: #4b5563; margin: 8px 0 2px; }}
+  .ai-hr {{ border: none; border-top: 1px solid #e5e7eb; margin: 10px 0; }}
+  .ai-p {{ font-size: 11px; color: #374151; margin: 3px 0; line-height: 1.6; }}
+  .ai-list {{ margin: 4px 0 4px 16px; padding: 0; }}
+  .ai-list li {{ font-size: 11px; color: #374151; margin: 2px 0; line-height: 1.5; }}
+  .ai-table {{ width: 100%; border-collapse: collapse; margin: 8px 0; }}
+  .ai-table th {{ background: #f3f4f6; text-align: left; padding: 6px 8px; font-size: 11px; font-weight: bold; }}
+  .ai-table td {{ padding: 5px 8px; border-bottom: 1px solid #f3f4f6; font-size: 11px; }}
 </style>
 </head>
 <body>
@@ -70,7 +159,7 @@ def _build_html(
 """
 
     if summary_content:
-        html += f'<h2>AI-Generated Summary</h2><div class="summary-box">{summary_content}</div>'
+        html += f'<h2>AI-Generated Summary</h2><div class="ai-summary">{_markdown_to_html(summary_content)}</div>'
 
     if bp_entries:
         html += "<h2>Blood Pressure</h2><table><tr><th>Date</th><th>Time</th><th>Reading</th><th>Pulse</th><th>Category</th><th>Notes</th></tr>"
