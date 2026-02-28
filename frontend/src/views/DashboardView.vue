@@ -31,20 +31,6 @@
       </div>
     </div>
 
-    <!-- Today's AI Summary -->
-    <div class="card">
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2">
-          <Sparkles class="w-4 h-4 text-indigo-600" />
-          <h2 class="text-sm font-semibold text-gray-900">Today's AI Summary</h2>
-        </div>
-        <button v-if="!dailySummary && !summaryLoading" @click="generateSummary" class="text-xs text-indigo-600 font-medium">Generate</button>
-        <Loader2 v-if="summaryLoading" class="w-4 h-4 animate-spin text-indigo-400" />
-      </div>
-      <div v-if="dailySummary" class="markdown-content" v-html="renderMarkdown(dailySummary)"></div>
-      <p v-else class="text-sm text-gray-400 italic">No summary yet for today. Click Generate.</p>
-    </div>
-
     <!-- Recent entries — grouped by category -->
     <div>
       <div class="flex items-center justify-between mb-3">
@@ -208,14 +194,13 @@ import { ref, computed, onMounted } from "vue"
 import { useRouter, RouterLink } from "vue-router"
 import { format } from "date-fns"
 import {
-  Sparkles, Loader2, BookOpen, Heart, Thermometer, Utensils, Dumbbell,
+  Loader2, BookOpen, Heart, Thermometer, Utensils, Dumbbell,
   ChevronDown, Trash2, Pencil, X, Calendar as CalendarIcon,
   Activity, Pill, UtensilsCrossed,
 } from "lucide-vue-next"
 import { useAuthStore } from "@/stores/auth"
 import { useEntriesStore } from "@/stores/entries"
 import { useToast } from "@/composables/useToast"
-import { summariesApi } from "@/api"
 import BPBadge from "@/components/BPBadge.vue"
 import EntryCard from "@/components/EntryCard.vue"
 import BPForm from "@/components/BPForm.vue"
@@ -228,9 +213,6 @@ const auth = useAuthStore()
 const entries = useEntriesStore()
 const { toast } = useToast()
 const loading = ref(false)
-const dailySummary = ref(null)
-const summaryLoading = ref(false)
-const todayDate = format(new Date(), "yyyy-MM-dd")
 const collapsedCats = ref({ bp: true, symptom: true, food: true, gym: true })
 
 const pendingDelete = ref(null)
@@ -312,26 +294,7 @@ onMounted(async () => {
     entries.fetchGym({ limit: 3 }),
   ])
   loading.value = false
-  loadSummary()
 })
-
-async function loadSummary() {
-  try {
-    const { data } = await summariesApi.getDaily(todayDate)
-    dailySummary.value = data.content || data.summary
-  } catch { /* no summary yet */ }
-}
-
-async function generateSummary() {
-  summaryLoading.value = true
-  try {
-    const { data } = await summariesApi.generateDaily(todayDate)
-    dailySummary.value = data.content || data.summary
-    toast("Summary generated")
-  } catch {
-    toast("Failed to generate summary", "error")
-  } finally { summaryLoading.value = false }
-}
 
 function toggleCat(key) {
   collapsedCats.value[key] = !collapsedCats.value[key]
@@ -373,25 +336,4 @@ async function saveEdit() {
   } finally { saving.value = false }
 }
 
-function renderMarkdown(md) {
-  if (!md) return ''
-  let html = md
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/^---+$/gm, '<hr>')
-  html = html.replace(/\n\n+/g, '</p><p class="mt-2">').replace(/\n/g, '<br>')
-  return `<p>${html}</p>`
-}
 </script>
-
-<style scoped>
-.markdown-content :deep(h1) { @apply text-base font-bold text-gray-900 mt-3 mb-1; }
-.markdown-content :deep(h2) { @apply text-sm font-bold text-gray-800 mt-2 mb-1; }
-.markdown-content :deep(h3) { @apply text-sm font-semibold text-gray-700 mt-2 mb-0.5; }
-.markdown-content :deep(p)  { @apply text-sm text-gray-700; }
-.markdown-content :deep(strong) { @apply font-semibold; }
-.markdown-content :deep(hr)  { @apply border-gray-200 my-2; }
-</style>

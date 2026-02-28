@@ -13,7 +13,6 @@
       <!-- Content -->
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-xs font-medium uppercase tracking-wide" :class="iconColor">{{ typeLabel }}</span>
           <span class="text-xs text-gray-400">{{ formattedDate }}</span>
           <span v-if="isUrgent" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700 font-medium">Urgent</span>
         </div>
