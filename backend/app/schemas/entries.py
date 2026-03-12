@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, date, time
 from pydantic import BaseModel, ConfigDict, field_validator
-from ..models.entries import MealType, CatalogueCategory, SummaryType
+from ..models.entries import MealType, CatalogueCategory, SummaryType, SummaryAudience
 from .profile import TagOut
 
 
@@ -233,10 +233,16 @@ class AISummaryOut(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
     summary_type: SummaryType
+    audience: SummaryAudience
     period_start: date
     period_end: date
     content: str
     generated_at: datetime
+
+
+class WeeklySummariesOut(BaseModel):
+    patient: AISummaryOut
+    professional: AISummaryOut
 
 
 # ── Calendar ─────────────────────────────────────────────────────────────────
@@ -260,3 +266,4 @@ class ExportRequest(BaseModel):
     end_date: date
     tag_ids: list[uuid.UUID] = []
     include_summary: bool = False
+    audience: str = "professional"  # 'patient' or 'professional'

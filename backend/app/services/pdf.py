@@ -6,7 +6,7 @@ from weasyprint import HTML
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from ..models.entries import BPEntry, SymptomEntry, FoodEntry, GymEntry, AISummary, SummaryType
+from ..models.entries import BPEntry, SymptomEntry, FoodEntry, GymEntry, AISummary, SummaryType, SummaryAudience
 from ..models.user import User
 from ..models.profile import UserIdentityProfile
 
@@ -115,10 +115,15 @@ def _build_html(
     foods: list,
     gyms: list,
     summary_content: str | None,
+    audience: str = "professional",
 ) -> str:
     dob = identity.date_of_birth.isoformat() if identity and identity.date_of_birth else "—"
     nhs = escape(identity.nhs_number) if identity and identity.nhs_number else "—"
     gp = escape(identity.gp_name) if identity and identity.gp_name else "—"
+
+    is_patient = audience == "patient"
+    title = "MediDiary - My Health Summary" if is_patient else "MediDiary - Health Record Export"
+    summary_heading = "Your Weekly Summary" if is_patient else "AI-Generated Summary"
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -147,7 +152,7 @@ def _build_html(
 </style>
 </head>
 <body>
-<h1>MediDiary - Health Record Export</h1>
+<h1>{title}</h1>
 <div class="header-meta">
   <strong>Name:</strong> {escape(user.name)} |
   <strong>Date of Birth:</strong> {dob} |
@@ -159,7 +164,7 @@ def _build_html(
 """
 
     if summary_content:
-        html += f'<h2>AI-Generated Summary</h2><div class="ai-summary">{_markdown_to_html(summary_content)}</div>'
+        html += f'<h2>{summary_heading}</h2><div class="ai-summary">{_markdown_to_html(summary_content)}</div>'
 
     if bp_entries:
         html += "<h2>Blood Pressure</h2><table><tr><th>Date</th><th>Time</th><th>Reading</th><th>Pulse</th><th>Category</th><th>Notes</th></tr>"
@@ -202,6 +207,7 @@ async def generate_pdf(
     end_date: date,
     tag_ids: list,
     include_summary: bool,
+    audience: str = "professional",
 ) -> bytes:
     identity_result = await session.execute(
         select(UserIdentityProfile).where(UserIdentityProfile.user_id == user.id)
@@ -259,6 +265,7 @@ async def generate_pdf(
         sum_result = await session.execute(
             select(AISummary).where(
                 AISummary.user_id == user.id,
+                AISummary.audience == SummaryAudience(audience),
                 AISummary.period_start >= start_date,
                 AISummary.period_end <= end_date,
             ).order_by(AISummary.generated_at.desc())
@@ -267,6 +274,6 @@ async def generate_pdf(
         if summary:
             summary_content = summary.content
 
-    html_content = _build_html(user, identity, start_date, end_date, list(bp_entries), list(symptoms), list(foods), list(gyms), summary_content)
+    html_content = _build_html(user, identity, start_date, end_date, list(bp_entries), list(symptoms), list(foods), list(gyms), summary_content, audience)
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, lambda: HTML(string=html_content).write_pdf())

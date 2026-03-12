@@ -58,6 +58,11 @@ class SummaryType(str, enum.Enum):
     weekly = "weekly"
 
 
+class SummaryAudience(str, enum.Enum):
+    patient = "patient"
+    professional = "professional"
+
+
 # ── Blood Pressure ──────────────────────────────────────────────────────────
 
 class BPEntry(Base):
@@ -197,6 +202,7 @@ class AISummary(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     summary_type: Mapped[SummaryType] = mapped_column(SAEnum(SummaryType, name="summarytype"), nullable=False)
+    audience: Mapped[SummaryAudience] = mapped_column(SAEnum(SummaryAudience, name="summaryaudience"), nullable=False, default=SummaryAudience.professional)
     period_start: Mapped[date] = mapped_column(Date, nullable=False)
     period_end: Mapped[date] = mapped_column(Date, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)

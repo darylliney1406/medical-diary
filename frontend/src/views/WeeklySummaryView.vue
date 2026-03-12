@@ -83,13 +83,33 @@
             <span v-else>Generate</span>
           </button>
         </div>
-        <div v-if="aiSummary" class="markdown-content" v-html="renderMarkdown(aiSummary)"></div>
+
+        <!-- Audience tabs -->
+        <div v-if="patientSummary || professionalSummary" class="flex gap-1 mb-3 bg-gray-100 rounded-lg p-0.5">
+          <button
+            @click="activeTab = 'patient'"
+            :class="['flex-1 text-xs font-medium py-1.5 rounded-md transition-colors', activeTab === 'patient' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+          >For Me</button>
+          <button
+            @click="activeTab = 'professional'"
+            :class="['flex-1 text-xs font-medium py-1.5 rounded-md transition-colors', activeTab === 'professional' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+          >For GP</button>
+        </div>
+
+        <div v-if="activeTab === 'patient' && patientSummary" class="markdown-content" v-html="renderMarkdown(patientSummary)"></div>
+        <div v-else-if="activeTab === 'professional' && professionalSummary" class="markdown-content" v-html="renderMarkdown(professionalSummary)"></div>
         <p v-else class="text-sm text-gray-400 italic">No AI summary yet. Click Generate to create one.</p>
       </div>
 
-      <button @click="exportPdf" class="w-full btn-secondary flex items-center justify-center gap-2">
-        <Download class="w-4 h-4" /> Export as PDF
-      </button>
+      <!-- Export buttons -->
+      <div class="grid grid-cols-2 gap-3">
+        <button @click="exportPdf('patient')" class="btn-secondary flex items-center justify-center gap-2">
+          <Download class="w-4 h-4" /> Export for Me
+        </button>
+        <button @click="exportPdf('professional')" class="btn-secondary flex items-center justify-center gap-2">
+          <Download class="w-4 h-4" /> Export for GP
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -105,7 +125,9 @@ const loading = ref(false)
 const currentWeekStart = ref(startOfWeek(new Date(), { weekStartsOn: 1 }))
 const bpData = ref([])
 const symptomEntries = ref([])
-const aiSummary = ref(null)
+const patientSummary = ref(null)
+const professionalSummary = ref(null)
+const activeTab = ref('patient')
 const summaryLoading = ref(false)
 const weekLabel = computed(() => {
   const wS = currentWeekStart.value
@@ -145,18 +167,22 @@ const bpStats = computed(() => {
 onMounted(fetchWeek)
 watch(currentWeekStart, fetchWeek)
 async function fetchWeek() {
-  loading.value = true; aiSummary.value = null
+  loading.value = true
+  patientSummary.value = null
+  professionalSummary.value = null
   const s = format(currentWeekStart.value, "yyyy-MM-dd")
   const e = format(endOfWeek(currentWeekStart.value, { weekStartsOn: 1 }), "yyyy-MM-dd")
   try {
-    const [bp, sym, sum] = await Promise.allSettled([
+    const [bp, sym, sumPatient, sumProfessional] = await Promise.allSettled([
       bpApi.list({ start_date: s, end_date: e, limit: 100 }),
       symptomApi.list({ start_date: s, end_date: e, limit: 100 }),
-      summariesApi.getWeekly(isoWeek.value),
+      summariesApi.getWeekly(isoWeek.value, 'patient'),
+      summariesApi.getWeekly(isoWeek.value, 'professional'),
     ])
     bpData.value = bp.value?.data?.items || bp.value?.data || []
     symptomEntries.value = sym.value?.data?.items || sym.value?.data || []
-    if (sum.status === "fulfilled") aiSummary.value = sum.value?.data?.content || sum.value?.data?.summary
+    if (sumPatient.status === "fulfilled") patientSummary.value = sumPatient.value?.data?.content || null
+    if (sumProfessional.status === "fulfilled") professionalSummary.value = sumProfessional.value?.data?.content || null
   } finally { loading.value = false }
 }
 function prevWeek() { currentWeekStart.value = subWeeks(currentWeekStart.value, 1) }
@@ -165,8 +191,9 @@ async function generateSummary() {
   summaryLoading.value = true
   try {
     const { data } = await summariesApi.generateWeekly(isoWeek.value)
-    aiSummary.value = data.content || data.summary
-    toast("Summary generated")
+    patientSummary.value = data.patient.content
+    professionalSummary.value = data.professional.content
+    toast("Summaries generated")
   } catch { toast("Failed", "error") } finally { summaryLoading.value = false }
 }
 function renderMarkdown(md) {
@@ -189,13 +216,14 @@ function renderMarkdown(md) {
   html = html.replace(/\n\n+/g, '</p><p class="mt-2">').replace(/\n/g, '<br>')
   return `<p>${html}</p>`
 }
-async function exportPdf() {
+async function exportPdf(audience) {
   try {
     const s = format(currentWeekStart.value, "yyyy-MM-dd")
     const e = format(endOfWeek(currentWeekStart.value, { weekStartsOn: 1 }), "yyyy-MM-dd")
-    const { data } = await exportApi.pdf({ type: "weekly", start_date: s, end_date: e, include_summary: true })
+    const { data } = await exportApi.pdf({ type: "weekly", start_date: s, end_date: e, include_summary: true, audience })
     const url = URL.createObjectURL(data)
-    const a = document.createElement("a"); a.href = url; a.download = "weekly-summary.pdf"; a.click()
+    const label = audience === "patient" ? "personal" : "gp"
+    const a = document.createElement("a"); a.href = url; a.download = `weekly-summary-${label}.pdf`; a.click()
     URL.revokeObjectURL(url)
   } catch { toast("Export failed", "error") }
 }

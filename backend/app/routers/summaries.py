@@ -1,13 +1,13 @@
 from datetime import date, timedelta
 import re
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from ..database import get_db
 from ..models.user import User
-from ..models.entries import AISummary, SummaryType
-from ..schemas.entries import AISummaryOut
-from ..services.ai import generate_daily_summary, generate_weekly_summary
+from ..models.entries import AISummary, SummaryType, SummaryAudience
+from ..schemas.entries import AISummaryOut, WeeklySummariesOut
+from ..services.ai import generate_daily_summary, generate_weekly_summaries
 from .deps import get_current_user
 
 router = APIRouter()
@@ -50,6 +50,7 @@ async def generate_daily(
     summary = AISummary(
         user_id=user.id,
         summary_type=SummaryType.daily,
+        audience=SummaryAudience.professional,
         period_start=target_date,
         period_end=target_date,
         content=content,
@@ -63,6 +64,7 @@ async def generate_daily(
 @router.get("/weekly/{iso_week}", response_model=AISummaryOut | None)
 async def get_weekly_summary(
     iso_week: str,
+    audience: str = Query("professional"),
     session: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -71,28 +73,39 @@ async def get_weekly_summary(
         select(AISummary).where(
             AISummary.user_id == user.id,
             AISummary.summary_type == SummaryType.weekly,
+            AISummary.audience == SummaryAudience(audience),
             AISummary.period_start == week_start,
         ).order_by(AISummary.generated_at.desc())
     )
     return result.scalars().first()
 
 
-@router.post("/weekly/{iso_week}/generate", response_model=AISummaryOut, status_code=status.HTTP_201_CREATED)
+@router.post("/weekly/{iso_week}/generate", response_model=WeeklySummariesOut, status_code=status.HTTP_201_CREATED)
 async def generate_weekly(
     iso_week: str,
     session: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     week_start, week_end = _iso_week_to_dates(iso_week)
-    content = await generate_weekly_summary(session, user.id, week_start, week_end)
-    summary = AISummary(
-        user_id=user.id,
-        summary_type=SummaryType.weekly,
-        period_start=week_start,
-        period_end=week_end,
-        content=content,
-    )
-    session.add(summary)
+    results = await generate_weekly_summaries(session, user.id, week_start, week_end)
+
+    summaries = {}
+    for audience_key in ("professional", "patient"):
+        summary = AISummary(
+            user_id=user.id,
+            summary_type=SummaryType.weekly,
+            audience=SummaryAudience(audience_key),
+            period_start=week_start,
+            period_end=week_end,
+            content=results[audience_key],
+        )
+        session.add(summary)
+        await session.flush()
+        await session.refresh(summary)
+        summaries[audience_key] = summary
+
     await session.commit()
-    await session.refresh(summary)
-    return summary
+    return WeeklySummariesOut(
+        patient=summaries["patient"],
+        professional=summaries["professional"],
+    )

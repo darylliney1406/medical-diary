@@ -168,13 +168,10 @@ Tone: clinical but readable. Do not be alarmist. Be factual and specific."""
     return message.content[0].text
 
 
-async def generate_weekly_summary(session: AsyncSession, user_id, week_start: date, week_end: date) -> str:
-    settings = get_settings()
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-
+async def _collect_weekly_data(session: AsyncSession, user_id, week_start: date, week_end: date) -> dict:
+    """Collect all weekly diary data once, shared by both summary generators."""
     medical_context = await _get_user_medical_context(session, user_id)
 
-    # Collect all BP readings for the week
     bp_lines = []
     bp_result = await session.execute(
         select(BPEntry).options(selectinload(BPEntry.readings)).where(
@@ -207,19 +204,28 @@ async def generate_weekly_summary(session: AsyncSession, user_id, week_start: da
     )
     gym_lines = [f"{g.entry_date}: {len(g.exercises)} exercise(s)" for g in gym_result.scalars().all()]
 
-    prompt = f"""You are a clinical GP assistant generating a weekly health summary for the week of {week_start.isoformat()} to {week_end.isoformat()}.
+    return {
+        "medical_context": medical_context,
+        "bp_lines": bp_lines,
+        "sym_lines": sym_lines,
+        "gym_lines": gym_lines,
+    }
+
+
+def _build_professional_prompt(week_start: date, week_end: date, data: dict) -> str:
+    return f"""You are a clinical GP assistant generating a weekly health summary for the week of {week_start.isoformat()} to {week_end.isoformat()}.
 
 Patient medical context:
-{medical_context}
+{data["medical_context"]}
 
 Blood pressure readings this week:
-{chr(10).join(bp_lines) if bp_lines else 'None recorded'}
+{chr(10).join(data["bp_lines"]) if data["bp_lines"] else 'None recorded'}
 
 Symptoms this week:
-{chr(10).join(sym_lines) if sym_lines else 'None recorded'}
+{chr(10).join(data["sym_lines"]) if data["sym_lines"] else 'None recorded'}
 
 Gym sessions:
-{chr(10).join(gym_lines) if gym_lines else 'None recorded'}
+{chr(10).join(data["gym_lines"]) if data["gym_lines"] else 'None recorded'}
 
 Write a structured weekly summary including:
 1. Blood pressure trends (morning vs evening averages if identifiable, overall trend, any concerning readings)
@@ -229,9 +235,73 @@ Write a structured weekly summary including:
 
 Format: clear sections with headings. Tone: clinical, professional, suitable for sharing with a doctor."""
 
-    message = client.messages.create(
-        model="claude-opus-4-6",
-        max_tokens=1500,
-        messages=[{"role": "user", "content": prompt}],
+
+def _build_patient_prompt(week_start: date, week_end: date, data: dict) -> str:
+    return f"""You are a friendly, supportive health assistant writing a weekly health summary for a patient to read themselves, for the week of {week_start.isoformat()} to {week_end.isoformat()}.
+
+Patient medical context:
+{data["medical_context"]}
+
+Blood pressure readings this week:
+{chr(10).join(data["bp_lines"]) if data["bp_lines"] else 'None recorded'}
+
+Symptoms this week:
+{chr(10).join(data["sym_lines"]) if data["sym_lines"] else 'None recorded'}
+
+Gym sessions:
+{chr(10).join(data["gym_lines"]) if data["gym_lines"] else 'None recorded'}
+
+Write a warm, encouraging weekly summary for the patient. Include:
+1. How they're doing overall — highlight positives and progress
+2. Blood pressure insights in plain language (avoid medical jargon — e.g. say "a little high" not "stage 1 hypertension")
+3. Any symptoms and what they might mean, reassuringly but honestly
+4. Exercise and lifestyle — celebrate effort and encourage consistency
+5. Practical, actionable tips (e.g. "try reducing salt", "staying hydrated can help with headaches", "great job keeping up your gym routine")
+6. Gentle reminders to speak to their GP about anything that needs attention
+
+Tone: supportive, warm, easy to understand. Use simple language — imagine you are writing for someone with no medical background. Be encouraging but honest. Do not be alarmist.
+Format: clear sections with headings."""
+
+
+async def generate_weekly_summaries(session: AsyncSession, user_id, week_start: date, week_end: date) -> dict[str, str]:
+    """Generate both patient and professional weekly summaries. Returns dict with 'patient' and 'professional' keys."""
+    settings = get_settings()
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+    data = await _collect_weekly_data(session, user_id, week_start, week_end)
+
+    professional_prompt = _build_professional_prompt(week_start, week_end, data)
+    patient_prompt = _build_patient_prompt(week_start, week_end, data)
+
+    import asyncio
+    loop = asyncio.get_running_loop()
+
+    def _call_professional():
+        return client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1500,
+            messages=[{"role": "user", "content": professional_prompt}],
+        )
+
+    def _call_patient():
+        return client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1500,
+            messages=[{"role": "user", "content": patient_prompt}],
+        )
+
+    professional_msg, patient_msg = await asyncio.gather(
+        loop.run_in_executor(None, _call_professional),
+        loop.run_in_executor(None, _call_patient),
     )
-    return message.content[0].text
+
+    return {
+        "professional": professional_msg.content[0].text,
+        "patient": patient_msg.content[0].text,
+    }
+
+
+async def generate_weekly_summary(session: AsyncSession, user_id, week_start: date, week_end: date) -> str:
+    """Generate only the professional weekly summary (backwards compat)."""
+    results = await generate_weekly_summaries(session, user_id, week_start, week_end)
+    return results["professional"]

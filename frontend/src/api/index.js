@@ -137,7 +137,7 @@ export const calendarApi = {
 export const summariesApi = {
   getDaily: (date) => api.get('/summaries/daily/' + date),
   generateDaily: (date) => api.post('/summaries/daily/' + date + '/generate'),
-  getWeekly: (isoWeek) => api.get('/summaries/weekly/' + isoWeek),
+  getWeekly: (isoWeek, audience = 'professional') => api.get('/summaries/weekly/' + isoWeek, { params: { audience } }),
   generateWeekly: (isoWeek) => api.post('/summaries/weekly/' + isoWeek + '/generate'),
 }
 

@@ -23,8 +23,10 @@ async def export_pdf(
         end_date=body.end_date,
         tag_ids=body.tag_ids,
         include_summary=body.include_summary,
+        audience=body.audience,
     )
-    filename = f"medidiary-{body.start_date}-to-{body.end_date}.pdf"
+    audience_label = "personal" if body.audience == "patient" else "gp"
+    filename = f"medidiary-{audience_label}-{body.start_date}-to-{body.end_date}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
